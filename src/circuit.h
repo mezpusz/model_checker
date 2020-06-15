@@ -2,6 +2,8 @@
 
 #include <set>
 #include <map>
+#include <sstream>
+#include <iostream>
 
 struct circuit {
     int M;
@@ -10,3 +12,5 @@ struct circuit {
     std::map<std::pair<int, int>, int> ands;
     std::set<int> outputs;
 };
+
+void circuit_debug(const circuit& c);

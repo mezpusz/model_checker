@@ -3,6 +3,17 @@
 #include <cstdlib>
 
 #include "aiger_parser.h"
+#include "formula.h"
+
+cnf create_initial(const circuit& c) {
+    cnf res;
+    for (const auto& [i, o] : c.latches) {
+        clause cl;
+        cl.lits.insert(negate_literal(o));
+        res.add_clause(cl);
+    }
+    return res;
+}
 
 int main(int argc, char** argv) {
     std::string input_file;
@@ -21,5 +32,10 @@ int main(int argc, char** argv) {
     if (!parse_aiger_file(input_file, c)) {
         return -1;
     }
+
+    circuit_debug(c);
+
+    cnf_debug(create_initial(c));
+
     return 0;
 }
