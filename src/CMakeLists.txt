@@ -6,6 +6,12 @@ add_executable(model_checker aiger_parser.cc
                              circuit.h
                              formula.cc
                              formula.h
-                             main.cc)
+                             main.cc
+                             minisat/File.C
+                             minisat/File.h
+                             minisat/Proof.C
+                             minisat/Proof.h
+                             minisat/Solver.C
+                             minisat/Solver.h)
 
 include_directories("${PROJECT_SOURCE_DIR}")

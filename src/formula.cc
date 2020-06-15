@@ -31,6 +31,7 @@ void cnf::merge(const cnf& other) {
     for (const auto& cl : other.cls) {
         cls.insert(cl);
     }
+    num_vars = std::max(num_vars, other.num_vars);
 }
 
 void cnf_debug(const cnf& c) {
