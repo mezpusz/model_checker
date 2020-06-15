@@ -27,6 +27,12 @@ void cnf::add_clause(const clause& cl) {
     cls.insert(cl);
 }
 
+void cnf::merge(const cnf& other) {
+    for (const auto& cl : other.cls) {
+        cls.insert(cl);
+    }
+}
+
 void cnf_debug(const cnf& c) {
     std::stringstream str;
     for (auto it = c.cls.begin(); it != c.cls.end();) {

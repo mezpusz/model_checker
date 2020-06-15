@@ -15,6 +15,18 @@ cnf create_initial(const circuit& c) {
     return res;
 }
 
+cnf create_bad(const circuit& c, int k) {
+    cnf res;
+    clause cl;
+    for (const auto& o : c.outputs) {
+        for (int i = 0; i <= k; i++) {
+            cl.lits.insert(o + i*c.M*2);
+        }
+    }
+    res.add_clause(cl);
+    return res;
+}
+
 int main(int argc, char** argv) {
     std::string input_file;
     int k = -1;
@@ -35,7 +47,9 @@ int main(int argc, char** argv) {
 
     circuit_debug(c);
 
-    cnf_debug(create_initial(c));
+    auto cnf = create_initial(c);
+    cnf.merge(create_bad(c, 0));
+    cnf_debug(cnf);
 
     return 0;
 }
