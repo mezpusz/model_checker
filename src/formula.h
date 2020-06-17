@@ -10,7 +10,6 @@ struct clause {
 };
 
 struct cnf {
-    int num_vars;
     std::set<clause> cls;
 
     void add_clause(const clause& cl);
