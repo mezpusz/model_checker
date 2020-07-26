@@ -28,9 +28,10 @@ void cnf::add_clause(const clause& cl) {
 }
 
 void cnf::merge(const cnf& other) {
-    for (const auto& cl : other.cls) {
-        cls.insert(cl);
-    }
+    cls.insert(other.cls.begin(), other.cls.end());
+    // for (const auto& cl : other.cls) {
+    //     cls.insert(cl);
+    // }
 }
 
 void cnf_debug(const cnf& c) {

@@ -2,8 +2,12 @@ cmake_minimum_required (VERSION 3.6)
 
 add_executable(model_checker aiger_parser.cc
                              aiger_parser.h
+                             bmc.cc
+                             bmc.h
                              circuit.cc
                              circuit.h
+                             dimacs.cc
+                             dimacs.h
                              formula.cc
                              formula.h
                              main.cc

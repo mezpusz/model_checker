@@ -9,6 +9,18 @@ struct clause {
     bool operator<(const clause& other) const;
 };
 
+struct conjunction {
+    std::set<int> c;
+
+    conjunction(int one) : c() {
+        c.insert(one);
+    }
+    conjunction(int one, int two) : c() {
+        c.insert(one);
+        c.insert(two);
+    }
+};
+
 struct cnf {
     std::set<clause> cls;
 
