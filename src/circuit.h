@@ -6,13 +6,13 @@
 #include <iostream>
 
 struct circuit {
-    int M;
-    std::set<int> inputs;
-    std::map<int, int> latches;
-    std::map<std::pair<int, int>, int> ands;
-    std::set<int> outputs;
+    uint64_t M;
+    std::set<uint64_t> inputs;
+    std::set<std::pair<uint64_t, uint64_t>> latches;
+    std::set<std::tuple<uint64_t, uint64_t, uint64_t>> ands;
+    std::set<uint64_t> outputs;
 
-    int shift() const { return 2*M; }
+    uint64_t shift() const { return 2*M; }
 };
 
 void circuit_debug(const circuit& c);

@@ -1,9 +1,10 @@
 #include "formula.h"
 
+#include <cassert>
 #include <iostream>
 #include <sstream>
 
-std::string literal_to_string(int n) {
+std::string literal_to_string(uint64_t n) {
     if (n == 0) {
         return "T";
     }
@@ -19,7 +20,7 @@ bool clause::operator<(const clause& other) const {
     return lits < other.lits;
 }
 
-int negate_literal(int lit) {
+uint64_t negate_literal(uint64_t lit) {
     return (lit%2 == 0) ? (lit + 1) : (lit - 1);
 }
 
@@ -32,6 +33,41 @@ void cnf::merge(const cnf& other) {
     // for (const auto& cl : other.cls) {
     //     cls.insert(cl);
     // }
+}
+
+void cnf::add_equiv(const conjunction& conj1, const conjunction& conj2) {
+    clause cl;
+    for (const auto& l : conj1.c) {
+        cl.lits.insert(negate_literal(l));
+    }
+    for (const auto& l : conj2.c) {
+        assert(cl.lits.count(l) == 0);
+        cl.lits.insert(l);
+        cls.insert(cl);
+        cl.lits.erase(l);
+    }
+    cl.lits.clear();
+    for (const auto& l : conj2.c) {
+        cl.lits.insert(negate_literal(l));
+    }
+    for (const auto& l : conj1.c) {
+        assert(cl.lits.count(l) == 0);
+        cl.lits.insert(l);
+        cls.insert(cl);
+        cl.lits.erase(l);
+    }
+}
+
+cnf cnf::duplicate(uint64_t shift) const {
+    cnf res;
+    for (const auto& cl : cls) {
+        clause cl_n;
+        for (const auto& lit : cl.lits) {
+            cl_n.lits.insert(lit + shift);
+        }
+        res.add_clause(cl_n);
+    }
+    return res;
 }
 
 void cnf_debug(const cnf& c) {

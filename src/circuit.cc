@@ -15,8 +15,8 @@ void circuit_debug(const circuit& c) {
         std::cout << literal_to_string(i) << " -> " << literal_to_string(o) << std::endl;
     }
     std::cout << "- ands" << std::endl;
-    for (const auto& [kv, o] : c.ands) {
-        std::cout << literal_to_string(kv.first) << ", " << literal_to_string(kv.second) << " -> " << literal_to_string(o) << std::endl;
+    for (const auto& [i1, i2, o] : c.ands) {
+        std::cout << literal_to_string(i1) << ", " << literal_to_string(i2) << " <-> " << literal_to_string(o) << std::endl;
     }
     std::cout << "- outputs" << std::endl;
     for (const auto& o : c.outputs) {

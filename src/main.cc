@@ -28,7 +28,8 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    std::cout << (run_bmc(c, k) ? "sat" : "unsat") << std::endl;
+    bmc b(std::move(c));
+    std::cout << (b.run(k) ? "sat" : "unsat") << std::endl;
 
     return 0;
 }

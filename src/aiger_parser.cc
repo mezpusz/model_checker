@@ -78,8 +78,9 @@ bool parse_aiger_file(const std::string& input_file, circuit& out) {
             std::cerr << "and line must contain 3 integers" << std::endl;
             return false;
         }
-        out.ands.insert(std::make_pair(
-            std::make_pair(atoi(and_[1].c_str()), atoi(and_[2].c_str())),
+        out.ands.insert(std::make_tuple(
+            atoi(and_[1].c_str()),
+            atoi(and_[2].c_str()),
             atoi(and_[0].c_str())));
     }
 
