@@ -60,7 +60,7 @@ bool parse_aiger_file(const std::string& input_file, circuit& out) {
             std::cerr << "latch line must contain 2 integers" << std::endl;
             return false;
         }
-        out.latches.insert(std::make_pair(atoi(latch[1].c_str()), atoi(latch[0].c_str())));
+        out.latches.push_back(std::make_pair(atoi(latch[1].c_str()), atoi(latch[0].c_str())));
     }
 
     for (int i = 0; i < O; i++) {
@@ -78,7 +78,7 @@ bool parse_aiger_file(const std::string& input_file, circuit& out) {
             std::cerr << "and line must contain 3 integers" << std::endl;
             return false;
         }
-        out.ands.insert(std::make_tuple(
+        out.ands.push_back(std::make_tuple(
             atoi(and_[1].c_str()),
             atoi(and_[2].c_str()),
             atoi(and_[0].c_str())));

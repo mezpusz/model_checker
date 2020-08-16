@@ -2,27 +2,28 @@
 
 #include <set>
 #include <string>
+#include <vector>
 
 struct clause {
-    std::set<uint64_t> lits;
+    std::vector<uint64_t> lits;
 
     bool operator<(const clause& other) const;
 };
 
 struct conjunction {
-    std::set<uint64_t> c;
+    std::vector<uint64_t> c;
 
     conjunction(uint64_t one) : c() {
-        c.insert(one);
+        c.push_back(one);
     }
     conjunction(uint64_t one, uint64_t two) : c() {
-        c.insert(one);
-        c.insert(two);
+        c.push_back(one);
+        c.push_back(two);
     }
 };
 
 struct cnf {
-    std::set<clause> cls;
+    std::vector<clause> cls;
 
     void add_clause(const clause& cl);
     void merge(const cnf& other);

@@ -5,9 +5,11 @@
 #include "aiger_parser.h"
 #include "dimacs.h"
 #include "formula.h"
+#include "helper.h"
 #include "log.h"
 
 #include "minisat/Solver.h"
+#include "minisat/Sort.h"
 
 bmc::bmc(circuit&& c)
     : _c(c), _cnf()
@@ -16,13 +18,27 @@ bmc::bmc(circuit&& c)
 void bmc::create_initial() {
     for (const auto& [i, o] : _c.latches) {
         clause cl;
-        cl.lits.insert(negate_literal(o));
+        assert(o%2==0); // maybe smth needs to be changed when negative latch outputs are possible
+        cl.lits.push_back(negate_literal(o));
         _cnf.add_clause(cl);
     }
+}
+
+void bmc::create_ands(uint64_t k) {
+    // if (k == 0) {
+    //     return;
+    // }
+    cnf temp;
     for (const auto& [i1, i2, o] : _c.ands) {
-        conjunction conj1(o);
-        conjunction conj2(i1, i2);
-        _cnf.add_equiv(conj1, conj2);
+        conjunction conj1(i1, i2);
+        conjunction conj2(o);
+        temp.add_equiv(conj1, conj2);
+    }
+
+    _cnf.merge(temp);
+    const auto shift = _c.shift();
+    for (uint64_t i = 1; i <= k; i++) {
+        _cnf.merge(temp.duplicate(shift*i));
     }
 }
 
@@ -31,7 +47,7 @@ void bmc::create_bad(uint64_t k) {
     const auto shift = _c.shift();
     for (const auto& o : _c.outputs) {
         for (uint64_t i = 0; i <= k; i++) {
-            cl.lits.insert(o + i*shift);
+            cl.lits.push_back(o + i*shift);
         }
     }
     _cnf.add_clause(cl);
@@ -45,13 +61,8 @@ void bmc::create_transition(uint64_t k) {
     // transitions from 0 to 1
     const auto shift = _c.shift();
     for (const auto& [i,o] : _c.latches) {
-        conjunction conj1(o+shift);
-        conjunction conj2(i);
-        temp.add_equiv(conj1, conj2);
-    }
-    for (const auto& [i1, i2, o] : _c.ands) {
-        conjunction conj1(o+shift);
-        conjunction conj2(i1+shift, i2+shift);
+        conjunction conj1(i);
+        conjunction conj2(o+shift);
         temp.add_equiv(conj1, conj2);
     }
 
@@ -64,11 +75,12 @@ void bmc::create_transition(uint64_t k) {
 
 bool bmc::run(uint64_t k) {
     create_initial();
+    create_ands(k);
     create_bad(k);
     create_transition(k);
 #if LOGGING
-    // circuit_debug(_c);
-    // cnf_debug(_cnf);
+    circuit_debug(_c);
+    cnf_debug(_cnf);
 #endif
 
     Solver S;
@@ -89,6 +101,8 @@ bool bmc::run(uint64_t k) {
     }
     std::cout << std::endl;
 #endif
+    // printStats(S.stats);
+    // checkProof(S.proof);
 
     return S.okay();
 }

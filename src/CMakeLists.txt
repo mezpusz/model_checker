@@ -10,6 +10,9 @@ add_executable(model_checker aiger_parser.cc
                              dimacs.h
                              formula.cc
                              formula.h
+                             helper.cc
+                             helper.h
+                             log.h
                              main.cc
                              minisat/File.C
                              minisat/File.h

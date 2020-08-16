@@ -25,36 +25,33 @@ uint64_t negate_literal(uint64_t lit) {
 }
 
 void cnf::add_clause(const clause& cl) {
-    cls.insert(cl);
+    cls.push_back(cl);
 }
 
 void cnf::merge(const cnf& other) {
-    cls.insert(other.cls.begin(), other.cls.end());
-    // for (const auto& cl : other.cls) {
-    //     cls.insert(cl);
-    // }
+    cls.insert(cls.end(), other.cls.begin(), other.cls.end());
 }
 
 void cnf::add_equiv(const conjunction& conj1, const conjunction& conj2) {
     clause cl;
     for (const auto& l : conj1.c) {
-        cl.lits.insert(negate_literal(l));
+        cl.lits.push_back(negate_literal(l));
     }
     for (const auto& l : conj2.c) {
-        assert(cl.lits.count(l) == 0);
-        cl.lits.insert(l);
-        cls.insert(cl);
-        cl.lits.erase(l);
+        // assert(cl.lits.count(l) == 0);
+        cl.lits.push_back(l);
+        cls.push_back(cl);
+        cl.lits.pop_back();
     }
     cl.lits.clear();
     for (const auto& l : conj2.c) {
-        cl.lits.insert(negate_literal(l));
+        cl.lits.push_back(negate_literal(l));
     }
     for (const auto& l : conj1.c) {
-        assert(cl.lits.count(l) == 0);
-        cl.lits.insert(l);
-        cls.insert(cl);
-        cl.lits.erase(l);
+        // assert(cl.lits.count(l) == 0);
+        cl.lits.push_back(l);
+        cls.push_back(cl);
+        cl.lits.pop_back();
     }
 }
 
@@ -63,7 +60,7 @@ cnf cnf::duplicate(uint64_t shift) const {
     for (const auto& cl : cls) {
         clause cl_n;
         for (const auto& lit : cl.lits) {
-            cl_n.lits.insert(lit + shift);
+            cl_n.lits.push_back(lit + shift);
         }
         res.add_clause(cl_n);
     }

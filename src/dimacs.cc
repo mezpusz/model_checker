@@ -1,11 +1,12 @@
 
 #include "dimacs.h"
 
+#include "log.h"
+
 #include <sstream>
-#include <iostream>
 
 int literal_to_dimacs(uint64_t lit) {
-    return (lit%2==0) ? lit/2 : -(lit/2);
+    return (lit%2==0) ? lit/2 : -((lit-1)/2);
 }
 
 void to_dimacs(const cnf& c, Solver& S) {
@@ -20,12 +21,15 @@ void to_dimacs(const cnf& c, Solver& S) {
 #endif
         for (const auto& lit : cl.lits) {
             parsed_lit = literal_to_dimacs(lit);
-            var = abs(parsed_lit)-1;
+            var = abs(parsed_lit);
 #if LOGGING
-            str << ((parsed_lit>0)?"-":"") << var << " ";
+            str << ((parsed_lit>0)?"":"-") << var << " ";
 #endif
-            while (var >= S.nVars()) S.newVar();
-            lits.push( (parsed_lit > 0) ? Lit(var) : ~Lit(var) );
+            while (var >= S.nVars())
+            {
+                S.newVar();
+            }
+            lits.push((parsed_lit > 0) ? Lit(var) : ~Lit(var));
         }
 #if LOGGING
         str << ") ";

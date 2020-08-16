@@ -11,6 +11,7 @@ public:
 
 private:
     void create_initial();
+    void create_ands(uint64_t k);
     void create_bad(uint64_t k);
     void create_transition(uint64_t k);
 
