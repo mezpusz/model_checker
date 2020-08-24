@@ -35,7 +35,7 @@ void Checker::root(const vec<Lit>& c) {
     // printf("%d: ROOT", clauses.size()); for (int i = 0; i < c.size(); i++) printf(" %s%d", sign(c[i])?"-":"", var(c[i])+1); printf("\n");
     std::cout << clauses.size() << ": ROOT";
     for (int i = 0; i < c.size(); i++) {
-        std::cout << " " << (sign(c[i])?"~":"") << "x" << (var(c[i])+1);
+        std::cout << " " << (sign(c[i])?"~":"") << "x" << var(c[i]);
     }
     std::cout << std::endl;
     clauses.push();
@@ -46,7 +46,7 @@ void Checker::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     //**/printf("%d: CHAIN %d", clauses.size(), cs[0]); for (int i = 0; i < xs.size(); i++) printf(" [%d] %d", xs[i]+1, cs[i+1]);
     std::cout << clauses.size() << ": CHAIN " << cs[0];
     for (int i = 0; i < xs.size(); i++) {
-        std::cout << " [" << "x" << (xs[i]+1) << "] " << cs[i+1];
+        std::cout << " [" << "x" << xs[i] << "] " << cs[i+1];
     }
     clauses.push();
     vec<Lit>& c = clauses.last();
@@ -56,7 +56,7 @@ void Checker::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     // printf(" =>"); for (int i = 0; i < c.size(); i++) printf(" %s%d", sign(c[i])?"-":"", var(c[i])+1); printf("\n");
     std::cout << " =>";
     for (int i = 0; i < c.size(); i++) {
-        std::cout << " " << (sign(c[i])?"~":"") << "x" << (var(c[i])+1);
+        std::cout << " " << (sign(c[i])?"~":"") << "x" << var(c[i]);
     }
     std::cout << std::endl;
 }

@@ -12,6 +12,8 @@ add_executable(model_checker aiger_parser.cc
                              formula.h
                              helper.cc
                              helper.h
+                             interpolation.cc
+                             interpolation.h
                              log.h
                              main.cc
                              minisat/File.C
