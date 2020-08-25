@@ -104,10 +104,27 @@ formula* negate_literal(formula* lit);
 void cnf_debug(formula* cnf);
 formula* to_cnf(formula* f);
 
-literal* to_literal(formula* f);
-junction_formula* to_junction_formula(formula* f);
-junction_formula* to_conjunction(formula* f);
-junction_formula* to_disjunction(formula* f);
+inline literal* to_literal(formula* f) {
+    // assert(f->is_literal());
+    return static_cast<literal*>(f);
+}
+
+inline junction_formula* to_junction_formula(formula* f) {
+    // assert(!f->is_literal());
+    return static_cast<junction_formula*>(f);
+}
+
+inline junction_formula* to_conjunction(formula* f) {
+    auto res = to_junction_formula(f);
+    // assert(res->conn == connective::AND);
+    return res;
+}
+
+inline junction_formula* to_disjunction(formula* f) {
+    auto res = to_junction_formula(f);
+    // assert(res->conn == connective::OR);
+    return res;
+}
 
 bool equal(formula* cnf1, formula* cnf2);
 bool is_true(formula* f);

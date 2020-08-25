@@ -161,6 +161,7 @@ formula* to_cnf(formula* f) {
 
             for (uint64_t i = 0; i < cl->subformulas.size();) {
                 auto curr = cl->subformulas[i];
+                // std::cout << curr->to_string() << std::endl;
                 if (!curr->is_literal()) {
                     auto bf = to_junction_formula(curr);
                     auto sf = bf->subformulas;
@@ -171,13 +172,12 @@ formula* to_cnf(formula* f) {
                             dup_cl->subformulas[i] = sf[j];
                             s->subformulas.push_back(dup_cl);
                         }
-                        cl->subformulas[i] = sf[0];
                     } else {
                         for (uint64_t j = 1; j < sf.size(); j++) {
                             cl->subformulas.push_back(sf[j]);
                         }
-                        cl->subformulas[i] = sf[0];
                     }
+                    cl->subformulas[i] = sf[0];
                     delete curr;
                     changed = true;
                     // break;
@@ -187,42 +187,21 @@ formula* to_cnf(formula* f) {
                     //     changed = true;
                     //     break;
                     // }
+                    // std::cout << curr->to_string() << " done" << std::endl;
                     i++;
                 }
             }
             // std::cout << "to_cnf new formula: " << s->to_string() << std::endl;
-            // if (changed) {
-            //     // std::cout << "to_cnf new formula: " << formula_to_string(s) << std::endl;
-            //     break;
-            // }
+            if (changed) {
+                // std::cout << "to_cnf new formula: " << std::endl;
+                break;
+            }
         }
     } while (changed);
 
     std::cout << "to_cnf end" << std::endl;
 
     return s;
-}
-
-literal* to_literal(formula* f) {
-    // assert(f->is_literal());
-    return static_cast<literal*>(f);
-}
-
-junction_formula* to_junction_formula(formula* f) {
-    // assert(!f->is_literal());
-    return static_cast<junction_formula*>(f);
-}
-
-junction_formula* to_conjunction(formula* f) {
-    auto res = to_junction_formula(f);
-    // assert(res->conn == connective::AND);
-    return res;
-}
-
-junction_formula* to_disjunction(formula* f) {
-    auto res = to_junction_formula(f);
-    // assert(res->conn == connective::OR);
-    return res;
 }
 
 bool equal(formula* cnf1, formula* cnf2) {
