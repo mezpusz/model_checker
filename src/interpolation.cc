@@ -56,15 +56,6 @@ void InterpolantCreator::root(const vec<Lit>& c) {
             if (f == nullptr) {
                 f = l;
             } else {
-                // junction_formula* disj;
-                // if (!f->is_literal()) {
-                //     disj = to_disjunction(f);
-                // } else {
-                //     disj = junction_formula::create(connective::OR);
-                //     disj->sf.insert(f);
-                // }
-                // disj->sf.insert(l);
-                // f = disj;
                 f = junction_formula::create_disjunction(f, l);
             }
         }
@@ -94,43 +85,10 @@ void InterpolantCreator::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
             f = clauses[cs[i]];
         } else if (var_b.count(xs[i]) == 0) { // f | g
             f = junction_formula::create_disjunction(f, clauses[cs[i+1]]);
-            // if (!f->is_literal() && to_junction_formula(f)->conn == connective::OR) {
-            //     to_junction_formula(f)->sf.insert(clauses[cs[i+1]]);
-            // } else if (!is_true(f)) {
-            //     auto nf = junction_formula::create(connective::OR);
-            //     nf->sf.insert(f);
-            //     if (!clauses[cs[i+1]]->is_literal() && to_junction_formula(clauses[cs[i+1]])->conn == connective::OR) {
-            //         for (auto& sf : *to_junction_formula(clauses[cs[i+1]])) {
-            //             nf->sf.insert(sf);
-            //         }
-            //     } else {
-            //         nf->sf.insert(clauses[cs[i+1]]);
-            //     }
-            //     f = nf;
-            // }
         } else if (!is_true(clauses[cs[i+1]])) { // f & g
             f = junction_formula::create_conjunction(f, clauses[cs[i+1]]);
-            // if (!f->is_literal() && to_junction_formula(f)->conn == connective::AND) {
-            //     to_junction_formula(f)->sf.insert(clauses[cs[i+1]]);
-            // } else if (is_true(f)) {
-            //     f = clauses[cs[i+1]];
-            // } else {
-            //     auto nf = junction_formula::create(connective::AND);
-            //     nf->sf.insert(f);
-            //     if (!clauses[cs[i+1]]->is_literal() && to_junction_formula(clauses[cs[i+1]])->conn == connective::AND) {
-            //         for (auto& sf : *to_junction_formula(clauses[cs[i+1]])) {
-            //             nf->sf.insert(sf);
-            //         }
-            //     } else {
-            //         nf->sf.insert(clauses[cs[i+1]]);
-            //     }
-            //     f = nf;
-            // }
         }
     }
-    // if (!f->is_literal()) {
-        // std::cout << "chain: " << f->to_string() << std::endl;
-    // }
     clauses.push_back(f);
 }
 
@@ -150,10 +108,6 @@ std::set<uint64_t> get_vars(formula* cnf) {
 formula* create_interpolant(formula* a, formula* b, Proof* p) {
     auto v_a = get_vars(a);
     auto v_b = get_vars(b);
-    // std::cout << "A: " << a->to_string() << std::endl;
-    // cnf_debug(a);
-    // std::cout << "B: " << b->to_string() << std::endl;
-    // cnf_debug(b);
     InterpolantCreator ic(v_a, v_b, a);
     p->traverse(ic);
 
@@ -177,22 +131,16 @@ bool interpolation(circuit&& c) {
             return true;
         }
         while (true) {
-            // checkProof(b.get_proof());
             auto interpolant = create_interpolant(a, b.get_b(), b.get_proof());
-            // cleanse(interpolant);
             auto c = to_cnf(interpolant);
-            std::cout << "interpolant cnf: " << c->to_string() << std::endl;
-            // cnf_debug(c);
             if (equal_cnf(a, c)) {
                 std::cout << "Interpolant is same as in previous round" << std::endl;
                 return false;
             }
-            std::cout << a->to_string() << std::endl;
             formula_set sf;
             sf.insert(a);
             sf.insert(interpolant);
             auto temp = junction_formula::create(connective::OR, std::move(sf));
-            std::cout << "new initial: " << temp->to_string() << std::endl;
             a = to_cnf(temp);
             b.set_a(a);
             if (b.run(k)) {

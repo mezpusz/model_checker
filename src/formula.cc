@@ -29,32 +29,6 @@ void merge(formula*& cnf, formula* other) {
     cnf = junction_formula::create_conjunction(cnf, other);
 }
 
-// void cleanse(formula* f) {
-//     bool changed = false;
-//     do {
-//         changed = false;
-//         if (f->is_literal()) {
-//             return;
-//         }
-//         auto f_j = to_junction_formula(f);
-//         for (auto& sf : *f_j) {
-//             cleanse(sf);
-//             if (is_true(sf)) {
-//                 if (f_j->conn == connective::OR) {
-//                     auto l = new literal;
-//                     l->var = 0;
-//                     f = l;
-//                     return;
-//                 } else if (f_j->conn == connective::AND) {
-//                     // f_j->subformulas.erase(sf);
-//                 } else {
-//                     assert(false);
-//                 }
-//             }
-//         }
-//     } while (changed);
-// }
-
 void add_equiv(formula*& cnf, const conjunction& conj1, const conjunction& conj2) {
     formula_set sf;
     for (const auto& l : conj1.c) {
@@ -95,31 +69,10 @@ formula* duplicate(formula* cnf, uint64_t shift) {
 }
 
 void cnf_debug(formula* cnf) {
-    auto cnf_j = to_conjunction(cnf);
-    std::stringstream str;
-    for (auto it = cnf_j->begin(); it != cnf_j->end();) {
-        str << "(";
-        auto cl_j = to_disjunction(*it);
-        for (auto it2 = cl_j->begin(); it2 != cl_j->end();) {
-            str << (*it2)->to_string();
-            // str << literal_to_string(to_literal(*it2)->var);
-            it2++;
-            if (it2 != cl_j->end()) {
-                str << " | ";
-            }
-        }
-        str << ")";
-        it++;
-        if (it != cnf_j->end()) {
-            str << " & ";
-        }
-    }
-    // std::cout << str.str() << std::endl;
     std::cout << cnf->to_string() << std::endl;
 }
 
 formula* to_cnf(formula* f) {
-    std::cout << "to_cnf start" << std::endl;
     if (f == nullptr) {
         return f;
     }
@@ -128,114 +81,52 @@ formula* to_cnf(formula* f) {
     formula_set sf_s;
     sf_s.insert(junction_formula::create(connective::OR, sf_c));
     formula* s = junction_formula::create(connective::AND, sf_s);
-    // std::cout << s->to_string() << std::endl;
 
     bool changed = false;
     do {
-        // std::cout << "new iter1" << std::endl;
         changed = false;
         auto s_j = static_cast<junction_formula*>(s);
+        auto sf_s = s_j->sub();
         for (auto it = s_j->begin(); it != s_j->end(); it++) {
             auto sf = *it;
             auto cl = to_disjunction(sf);
 
-            // std::cout << "new iter2" << std::endl;
             for (auto oit = cl->begin(); oit != cl->end(); oit++) {
-                // std::cout << curr->to_string() << std::endl;
                 auto curr = *oit;
                 if (!curr->is_literal()) {
-                    auto bf = to_junction_formula(curr);
-                    auto conn = bf->conn();
+                    auto curr_j = to_junction_formula(curr);
+                    auto conn = curr_j->conn();
                     auto cl_sf = cl->sub();
                     cl_sf.erase(curr);
-                    auto bf_sf = bf->sub();
-                    auto it = bf_sf.begin();
+                    sf_s.erase(cl);
+                    auto curr_sf = curr_j->sub();
+                    auto it = curr_sf.begin();
                     it++;
-                    if (conn == connective::AND) {
-                        for (; it != bf_sf.end(); it++) {
-                            cl_sf.insert(*it);
-                            add_clause(s, junction_formula::create(connective::OR, cl_sf));
+                    for (; it != curr_sf.end(); it++) {
+                        cl_sf.insert(*it);
+                        if (conn == connective::AND) {
+                            sf_s.insert(junction_formula::create(connective::OR, cl_sf));
                             cl_sf.erase(*it);
                         }
-                    } else {
-                        for (; it != bf_sf.end(); it++) {
-                            auto temp = junction_formula::create_disjunction(cl, *it);
-                            assert(temp == cl);
-                        }
                     }
-                    // std::cout << curr->to_string() << ", " << cl->to_string() << std::endl;
-                    auto temp = junction_formula::create_disjunction(cl, *bf_sf.begin());
-                    assert(temp == cl);
-                    // std::cout << curr->to_string() << ", " << cl->to_string() << std::endl;
-                    // delete curr;
+                    cl_sf.insert(*curr_sf.begin());
+                    cl = junction_formula::create(connective::OR, cl_sf);
+                    sf_s.insert(cl);
+                    s = junction_formula::create(connective::AND, sf_s);
                     changed = true;
                     break;
-                } else {
-                    // if (is_true(curr)) {
-                    //     s->subformulas.erase(it);
-                    //     changed = true;
-                    //     break;
-                    // }
-                    // std::cout << curr->to_string() << " done" << std::endl;
-                    continue;
                 }
             }
-            // std::cout << "to_cnf new formula: " << s->to_string() << std::endl;
             if (changed) {
-                // std::cout << "to_cnf new formula: " << std::endl;
                 break;
             }
         }
     } while (changed);
 
-    std::cout << "to_cnf end" << std::endl;
-
     return s;
 }
 
-bool less::operator()(formula* f1, formula* f2) {
-    bool res = true;
-    if (f1->is_literal() && f2->is_literal()) {
-        res = to_literal(f1)->var() < to_literal(f2)->var();
-    } else if (f1->is_literal()) {
-        res = false;
-    } else if (f2->is_literal()) {
-        res = true;
-    } else {
-        auto f1_j = to_junction_formula(f1);
-        auto f2_j = to_junction_formula(f2);
-        auto sub1 = f1_j->sub();
-        auto sub2 = f2_j->sub();
-
-        if (sub1.size() == sub2.size() && sub1.empty()) {
-            res = false;
-        } else if (sub1.size() == sub2.size() && sub1.size() == 1) {
-            res = operator()(*sub1.begin(), *sub2.begin());
-        } else if (f1_j->conn() == connective::AND && f2_j->conn() == connective::OR) {
-            res = true;
-        } else if (f1_j->conn() == connective::OR && f2_j->conn() == connective::AND) {
-            res = false;
-        } else if (sub1.size() < sub2.size()) {
-            res = true;
-        } else if (sub1.size() > sub2.size()) {
-            res = false;
-        } else {
-            for (auto it1 = sub1.begin(), it2 = sub2.begin(); it1 != sub1.end(); it1++, it2++) {
-                if (operator()(*it1,*it2)) {
-                    break;
-                } else if (operator()(*it2,*it1)) {
-                    res = false;
-                    break;
-                }
-            }
-        }
-    }
-    // std::cout << f1->to_string() << " " << f2->to_string() << " " << res << std::endl;
-    return res;
-}
-
 bool equal_cnf(formula* cnf1, formula* cnf2) {
-    std::cout << "equal start" << std::endl;
     auto cnf1_j = to_conjunction(cnf1);
     auto cnf2_j = to_conjunction(cnf2);
     bool match = true;
@@ -256,11 +147,10 @@ bool equal_cnf(formula* cnf1, formula* cnf2) {
             }
             if (!found) {
                 match = false;
-                break;
+                return match;
             }
         }
     }
-    std::cout << "equal end" << std::endl;
     return match;
 }
 
@@ -272,84 +162,92 @@ bool is_true(formula* f) {
 }
 
 literal* literal::create(uint64_t var) {
-    auto l = new literal;
-    l->v = var;
-    return static_cast<literal*>(try_insert_into_global(l));
+    auto res = global_literals.insert(std::make_pair(var, nullptr));
+    if (res.second) {
+        res.first->second = new literal;
+        res.first->second->v = var;
+    }
+    return res.first->second;
 }
 
 junction_formula* junction_formula::create(connective c) {
-    auto j = new junction_formula;
-    j->c = c;
-    return static_cast<junction_formula*>(try_insert_into_global(j));
+    return junction_formula::create(c, formula_set());
 }
 
 junction_formula* junction_formula::create(connective c, formula_set&& sf) {
-    auto j = new junction_formula;
-    j->c = c;
-    j->sf = sf;
-    return static_cast<junction_formula*>(try_insert_into_global(j));
+    auto m = global_ands;
+    if (c == connective::OR) {
+        m = global_ors;
+    }
+    auto res = m.insert(std::make_pair(sf, nullptr));
+    if (res.second) {
+        res.first->second = new junction_formula;
+        res.first->second->c = c;
+        res.first->second->sf = new formula_set(res.first->first);
+    }
+    return res.first->second;
 }
 
 junction_formula* junction_formula::create(connective c, const formula_set& sf) {
-    auto j = new junction_formula;
-    j->c = c;
-    j->sf = sf;
-    return static_cast<junction_formula*>(try_insert_into_global(j));
+    auto& m = global_ands;
+    if (c == connective::OR) {
+        m = global_ors;
+    }
+    auto res = m.insert(std::make_pair(sf, nullptr));
+    if (res.second) {
+        res.first->second = new junction_formula;
+        res.first->second->c = c;
+        res.first->second->sf = new formula_set(res.first->first);
+    }
+    return res.first->second;
 }
 
-formula* junction_formula::create_conjunction(formula* f1, formula* f2) {
+junction_formula* junction_formula::create_conjunction(formula* f1, formula* f2) {
     if (is_true(f1)) {
-        return f2;
+        return wrap_single_formula(connective::AND, f2);
     }
     if (is_true(f2)) {
-        return f1;
+        return wrap_single_formula(connective::AND, f1);
     }
-    auto conj = new junction_formula;
-    merge_subformulas(connective::AND, conj, f1, f2);
-    return try_insert_into_global(conj);
+    auto sf = merge_subformulas(connective::AND, f1, f2);
+    return junction_formula::create(connective::AND, std::move(sf));
 }
 
-formula* junction_formula::create_disjunction(formula* f1, formula* f2) {
+junction_formula* junction_formula::create_disjunction(formula* f1, formula* f2) {
     if (is_true(f1)) {
-        return f1;
+        return wrap_single_formula(connective::OR, f1);
     }
     if (is_true(f2)) {
-        return f2;
+        return wrap_single_formula(connective::OR, f2);
     }
-    auto conj = new junction_formula;
-    merge_subformulas(connective::OR, conj, f1, f2);
-    return try_insert_into_global(conj);
+    auto sf = merge_subformulas(connective::OR, f1, f2);
+    return junction_formula::create(connective::OR, std::move(sf));
 }
 
-void junction_formula::merge_subformulas(connective c, junction_formula* merged, formula* f1, formula* f2) {
-    merged->c = c;
+junction_formula* junction_formula::wrap_single_formula(connective c, formula* f) {
+    if (f->is_literal() || to_junction_formula(f)->c != c) {
+        formula_set sf;
+        sf.insert(f);
+        return junction_formula::create(c, std::move(sf));
+    }
+    return to_junction_formula(f);
+}
+
+formula_set junction_formula::merge_subformulas(connective c, formula* f1, formula* f2) {
+    formula_set sf;
     if (!f1->is_literal() && to_junction_formula(f1)->c == c) {
-        merged->sf = to_junction_formula(f1)->sf;
+        sf = *to_junction_formula(f1)->sf;
         if (!f2->is_literal() && to_junction_formula(f2)->c == c) {
-            merged->sf.insert(to_junction_formula(f2)->sf.begin(), to_junction_formula(f2)->sf.end());
+            sf.insert(to_junction_formula(f2)->sf->begin(), to_junction_formula(f2)->sf->end());
         } else {
-            merged->sf.insert(f2);
+            sf.insert(f2);
         }
     } else if (!f2->is_literal() && to_junction_formula(f2)->c == c) {
-        merged->sf = to_junction_formula(f2)->sf;
-        merged->sf.insert(f2);
+        sf = *to_junction_formula(f2)->sf;
+        sf.insert(f2);
     } else {
-        merged->sf.insert(f1);
-        merged->sf.insert(f2);
+        sf.insert(f1);
+        sf.insert(f2);
     }
-}
-
-formula* formula::try_insert_into_global(formula* f) {
-    auto res = global_formula_set.insert(f);
-    // std::cout << global_formula_set.size() << std::endl;
-    if (!res.second) {
-        delete f;
-    }
-    return *res.first;
-}
-
-void list_global() {
-    for (const auto& c : global_formula_set) {
-        std::cout << c->to_string() << std::endl;
-    }
+    return sf;
 }

@@ -55,9 +55,6 @@ formula* bmc::create_ands() {
 }
 
 void bmc::create_ands(uint64_t k) {
-    // if (k == 0) {
-    //     return;
-    // }
     auto temp = create_ands();
     const auto shift = _c.shift();
     for (uint64_t i = 2; i <= k; i++) {
@@ -95,7 +92,6 @@ void bmc::create_transition(uint64_t k) {
     auto temp = create_transition();
     const auto shift = _c.shift();
 
-    // merge(_b, temp);
     // transitions from 1 to 2, ..., k-1 to k
     for (uint64_t i = 1; i < k; i++) {
         merge(_b, duplicate(temp, shift*i));
@@ -103,14 +99,9 @@ void bmc::create_transition(uint64_t k) {
 }
 
 bool bmc::run(uint64_t k) {
-    // cnf_debug(_a);
-    // cnf_debug(_b);
     create_ands(k);
-    // cnf_debug(_b);
     create_bad(k);
-    // cnf_debug(_b);
     create_transition(k);
-    // cnf_debug(_b);
     
     Solver S;
     _p = new Proof();
@@ -118,12 +109,10 @@ bool bmc::run(uint64_t k) {
     formula* c = junction_formula::create(connective::AND);
     merge(c, _a);
     merge(c, _b);
-    // cnf_debug(c);
 #if LOGGING
     circuit_debug(_c);
     cnf_debug(c);
 #endif
-    // std::cout << "formula: " << formula_to_string(c) << std::endl;
     to_dimacs(c, S);
     S.solve();
 #if LOGGING

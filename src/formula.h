@@ -1,6 +1,7 @@
 #pragma once
 
 #include <set>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -9,18 +10,9 @@ public:
     virtual ~formula() = default;
     virtual bool is_literal() const = 0;
     virtual std::string to_string() = 0;
-
-    static formula* try_insert_into_global(formula* f);
 };
 
-class less {
-public:
-    bool operator()(formula* f1, formula* f2);
-};
-
-using formula_set = std::set<formula*, less>;
-
-static formula_set global_formula_set;
+using formula_set = std::set<formula*>;
 
 std::string literal_to_string(uint64_t n);
 
@@ -42,30 +34,33 @@ private:
     uint64_t v;
 };
 
+static std::map<uint64_t, literal*> global_literals;
+
 class junction_formula : public formula {
 public:
     static junction_formula* create(connective c);
-    static junction_formula* create(connective c, std::set<formula*, less>&& sf);
-    static junction_formula* create(connective c, const std::set<formula*, less>& sf);
-    static formula* create_conjunction(formula* f1, formula* f2);
-    static formula* create_disjunction(formula* f1, formula* f2);
+    static junction_formula* create(connective c, formula_set&& sf);
+    static junction_formula* create(connective c, const formula_set& sf);
+    static junction_formula* create_conjunction(formula* f1, formula* f2);
+    static junction_formula* create_disjunction(formula* f1, formula* f2);
+    static junction_formula* wrap_single_formula(connective c, formula* f);
 
     auto begin() {
-        return sf.begin();
+        return sf->begin();
     }
 
     auto end() {
-        return sf.end();
+        return sf->end();
     }
 
     bool is_literal() const override { return false; }
 
     std::string to_string() override {
         std::string res = "(";
-        for (auto it = sf.begin(); it != sf.end();) {
+        for (auto it = sf->begin(); it != sf->end();) {
             res += (*it)->to_string();
             it++;
-            if (it != sf.end()) {
+            if (it != sf->end()) {
                 if (c == connective::AND) {
                     res += " & ";
                 } else {
@@ -78,16 +73,19 @@ public:
     }
 
     connective conn() { return c; }
-    formula_set sub() { return sf; }
+    formula_set sub() { return *sf; }
 
 private:
     junction_formula() = default;
 
-    formula_set sf;
+    const formula_set* sf = nullptr;
     connective c = connective::UNSET;
 
-    static void merge_subformulas(connective c, junction_formula* merged, formula* f1, formula* f2);
+    static formula_set merge_subformulas(connective c, formula* f1, formula* f2);
 };
+
+static std::map<formula_set, junction_formula*> global_ands;
+static std::map<formula_set, junction_formula*> global_ors;
 
 struct conjunction {
     std::vector<literal*> c;
@@ -108,7 +106,6 @@ void add_clause(formula*& cnf, formula* cl);
 void merge(formula*& cnf, formula* other);
 void add_equiv(formula*& cnf, const conjunction& conj1, const conjunction& conj2);
 formula* duplicate(formula* cnf, uint64_t shift);
-// void cleanse(formula* f); 
 
 // misc
 formula* negate_literal(formula* lit);

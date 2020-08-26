@@ -42,7 +42,6 @@ int main(int argc, char** argv) {
         b.set_a(initial);
         std::cout << (b.run(k) ? "sat" : "unsat") << std::endl;
     }
-    // list_global();
 
     return 0;
 }
