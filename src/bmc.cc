@@ -18,10 +18,8 @@ bmc::bmc(circuit&& c)
 }
 
 void bmc::reset() {
-    _a = new junction_formula;
-    _b = new junction_formula;
-    to_junction_formula(_a)->conn = connective::AND;
-    to_junction_formula(_b)->conn = connective::AND;
+    _a = junction_formula::create(connective::AND);
+    _b = junction_formula::create(connective::AND);
 }
 
 void bmc::set_a(formula* a) {
@@ -33,32 +31,24 @@ formula* bmc::get_b() {
 }
 
 formula* bmc::create_initial() {
-    auto res = new junction_formula;
-    res->conn = connective::AND;
+    formula* res = junction_formula::create(connective::AND);
     for (const auto& [i, o] : _c.latches) {
-        auto cl = new junction_formula;
-        cl->conn = connective::OR;
         assert(o%2==0); // maybe smth needs to be changed when negative latch outputs are possible
-        literal l;
-        l.var = o;
-        cl->subformulas.push_back(negate_literal(&l));
-        add_clause(res, cl);
+        auto l = literal::create(o);
+        formula_set sf;
+        sf.insert(negate_literal(l));
+        add_clause(res, junction_formula::create(connective::OR, std::move(sf)));
     }
     auto a = create_ands();
-    merge(res, a);
+    add_clause(res, a);
     return res;
 }
 
 formula* bmc::create_ands() {
-    auto res = new junction_formula;
-    res->conn = connective::AND;
+    formula* res = junction_formula::create(connective::AND);
     for (const auto& [i1, i2, o] : _c.ands) {
-        literal li1, li2, lo;
-        li1.var = i1;
-        li2.var = i2;
-        lo.var = o;
-        conjunction conj1(&li1, &li2);
-        conjunction conj2(&lo);
+        conjunction conj1(literal::create(i1), literal::create(i2));
+        conjunction conj2(literal::create(o));
         add_equiv(res, conj1, conj2);
     }
     return res;
@@ -76,30 +66,23 @@ void bmc::create_ands(uint64_t k) {
 }
 
 void bmc::create_bad(uint64_t k) {
-    auto cl = new junction_formula;
-    cl->conn = connective::OR;
     const auto shift = _c.shift();
+    formula_set sf;
     for (const auto& o : _c.outputs) {
         for (uint64_t i = 0; i <= k; i++) {
-            auto lit = new literal;
-            lit->var = o + i*shift;
-            cl->subformulas.push_back(lit);
+            sf.insert(literal::create(o + i*shift));
         }
     }
-    add_clause(_b, cl);
+    add_clause(_b, junction_formula::create(connective::OR, std::move(sf)));
 }
 
 formula* bmc::create_transition() {
-    auto temp = new junction_formula;
-    temp->conn = connective::AND;
+    formula* temp = junction_formula::create(connective::AND);
     // transitions from 0 to 1
     const auto shift = _c.shift();
     for (const auto& [i,o] : _c.latches) {
-        literal li, lo;
-        li.var = i;
-        lo.var = o+shift;
-        conjunction conj1(&li);
-        conjunction conj2(&lo);
+        conjunction conj1(literal::create(i));
+        conjunction conj2(literal::create(o+shift));
         add_equiv(temp, conj1, conj2);
     }
     return temp;
@@ -120,21 +103,26 @@ void bmc::create_transition(uint64_t k) {
 }
 
 bool bmc::run(uint64_t k) {
+    // cnf_debug(_a);
+    // cnf_debug(_b);
     create_ands(k);
+    // cnf_debug(_b);
     create_bad(k);
+    // cnf_debug(_b);
     create_transition(k);
-#if LOGGING
-    circuit_debug(_c);
-    cnf_debug(_cnf);
-#endif
-
+    // cnf_debug(_b);
+    
     Solver S;
     _p = new Proof();
     S.proof = _p;
-    auto c = new junction_formula;
-    c->conn = connective::AND;
+    formula* c = junction_formula::create(connective::AND);
     merge(c, _a);
     merge(c, _b);
+    // cnf_debug(c);
+#if LOGGING
+    circuit_debug(_c);
+    cnf_debug(c);
+#endif
     // std::cout << "formula: " << formula_to_string(c) << std::endl;
     to_dimacs(c, S);
     S.solve();

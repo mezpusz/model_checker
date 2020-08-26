@@ -23,7 +23,7 @@ void to_dimacs(formula* cnf, Solver& S) {
         auto cl_j = to_disjunction(cl);
         for (const auto& lit : *cl_j) {
             auto lit_l = to_literal(lit);
-            parsed_lit = literal_to_dimacs(lit_l->var);
+            parsed_lit = literal_to_dimacs(lit_l->var());
             var = abs(parsed_lit);
 #if LOGGING
             str << ((parsed_lit>0)?"":"-") << var << " ";

@@ -4,6 +4,24 @@
 #include <string>
 #include <vector>
 
+class formula {
+public:
+    virtual ~formula() = default;
+    virtual bool is_literal() const = 0;
+    virtual std::string to_string() = 0;
+
+    static formula* try_insert_into_global(formula* f);
+};
+
+class less {
+public:
+    bool operator()(formula* f1, formula* f2);
+};
+
+using formula_set = std::set<formula*, less>;
+
+static formula_set global_formula_set;
+
 std::string literal_to_string(uint64_t n);
 
 enum class connective : uint8_t {
@@ -12,49 +30,43 @@ enum class connective : uint8_t {
     UNSET,
 };
 
-struct formula {
-    virtual ~formula() = default;
-    virtual bool is_literal() const = 0;
-    virtual std::string to_string() = 0;
-    virtual formula* copy() = 0;
-};
-
-struct literal : formula {
-    uint64_t var;
+class literal : public formula {
+public:
+    static literal* create(uint64_t var);
 
     bool is_literal() const override { return true; }
-    std::string to_string() override { return literal_to_string(var); }
-    formula* copy() override {
-        auto c = new literal;
-        c->var = var;
-        return c;
-    }
+    std::string to_string() override { return literal_to_string(v); }
+    uint64_t var() const { return v; }
+private:
+    literal() = default;
+    uint64_t v;
 };
 
-struct junction_formula : formula {
-    std::vector<formula*> subformulas;
-    connective conn = connective::UNSET;
+class junction_formula : public formula {
+public:
+    static junction_formula* create(connective c);
+    static junction_formula* create(connective c, std::set<formula*, less>&& sf);
+    static junction_formula* create(connective c, const std::set<formula*, less>& sf);
+    static formula* create_conjunction(formula* f1, formula* f2);
+    static formula* create_disjunction(formula* f1, formula* f2);
 
     auto begin() {
-        return subformulas.begin();
+        return sf.begin();
     }
 
     auto end() {
-        return subformulas.end();
+        return sf.end();
     }
 
     bool is_literal() const override { return false; }
 
     std::string to_string() override {
         std::string res = "(";
-        for (uint64_t i = 0; i < subformulas.size(); i++) {
-            if (subformulas[i] == nullptr) {
-                res += "T";
-            } else {
-                res += subformulas[i]->to_string();
-            }
-            if (i < subformulas.size()-1) {
-                if (conn == connective::AND) {
+        for (auto it = sf.begin(); it != sf.end();) {
+            res += (*it)->to_string();
+            it++;
+            if (it != sf.end()) {
+                if (c == connective::AND) {
                     res += " & ";
                 } else {
                     res += " | ";
@@ -65,19 +77,16 @@ struct junction_formula : formula {
         return res;
     }
 
-    formula* copy() override {
-        auto c = new junction_formula;
-        c->conn = conn;
-        c->subformulas.resize(subformulas.size());
-        for (uint64_t i = 0; i < subformulas.size(); i++) {
-            if (subformulas[i] == nullptr) {
-                c->subformulas[i] = nullptr;
-            } else {
-                c->subformulas[i] = subformulas[i]->copy();
-            }
-        }
-        return c;
-    }
+    connective conn() { return c; }
+    formula_set sub() { return sf; }
+
+private:
+    junction_formula() = default;
+
+    formula_set sf;
+    connective c = connective::UNSET;
+
+    static void merge_subformulas(connective c, junction_formula* merged, formula* f1, formula* f2);
 };
 
 struct conjunction {
@@ -92,12 +101,14 @@ struct conjunction {
     }
 };
 
+void list_global();
+
 // cnf
-void add_clause(formula* cnf, formula* cl);
-void merge(formula* cnf, formula* other);
-void add_equiv(formula* cnf, const conjunction& conj1, const conjunction& conj2);
+void add_clause(formula*& cnf, formula* cl);
+void merge(formula*& cnf, formula* other);
+void add_equiv(formula*& cnf, const conjunction& conj1, const conjunction& conj2);
 formula* duplicate(formula* cnf, uint64_t shift);
-void cleanse(formula* f); 
+// void cleanse(formula* f); 
 
 // misc
 formula* negate_literal(formula* lit);
@@ -126,7 +137,5 @@ inline junction_formula* to_disjunction(formula* f) {
     return res;
 }
 
-bool equal(formula* cnf1, formula* cnf2);
+bool equal_cnf(formula* cnf1, formula* cnf2);
 bool is_true(formula* f);
-
-junction_formula* duplicate_clause(junction_formula* cl);

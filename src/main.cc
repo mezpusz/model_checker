@@ -35,13 +35,14 @@ int main(int argc, char** argv) {
         auto shift = c.shift();
         bmc b(std::move(c));
         auto initial = b.create_initial();
-    if (k > 0) {
+        if (k > 0) {
             merge(initial, duplicate(b.create_ands(), shift));
             merge(initial, b.create_transition());
         }
         b.set_a(initial);
         std::cout << (b.run(k) ? "sat" : "unsat") << std::endl;
     }
+    // list_global();
 
     return 0;
 }

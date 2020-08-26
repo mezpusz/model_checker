@@ -12,13 +12,14 @@ bool check_contains(formula* cnf, const vec<Lit>& cl) {
 
     for (const auto& cl : *cnf_j) {
         auto cl_j = to_disjunction(cl);
-        if (cl_o.empty() && cl_j->subformulas.empty()) {
+        auto sub = cl_j->sub();
+        if (cl_o.empty() && sub.empty()) {
             return true;
         }
-        bool found = !cl_j->subformulas.empty();
+        bool found = !sub.empty();
         for (const auto& l : *cl_j) {
             auto l_l = to_literal(l);
-            if (cl_o.count(l_l->var) == 0) {
+            if (cl_o.count(l_l->var()) == 0) {
                 found = false;
                 break;
             }
@@ -51,33 +52,28 @@ void InterpolantCreator::root(const vec<Lit>& c) {
             if (var_b.count(var(c[i])) == 0) { // var not in A
                 continue;
             }
-            auto l = new literal;
-            l->var = var(c[i])*2 + sign(c[i]);
+            auto l = literal::create(var(c[i])*2 + sign(c[i]));
             if (f == nullptr) {
                 f = l;
             } else {
-                junction_formula* disj;
-                if (!f->is_literal()) {
-                    disj = to_disjunction(f);
-                } else {
-                    disj = new junction_formula;
-                    disj->conn = connective::OR;
-                    disj->subformulas.push_back(f);
-                }
-                disj->subformulas.push_back(l);
-                f = disj;
+                // junction_formula* disj;
+                // if (!f->is_literal()) {
+                //     disj = to_disjunction(f);
+                // } else {
+                //     disj = junction_formula::create(connective::OR);
+                //     disj->sf.insert(f);
+                // }
+                // disj->sf.insert(l);
+                // f = disj;
+                f = junction_formula::create_disjunction(f, l);
             }
         }
         if (f == nullptr) {
-            auto l = new literal;
-            l->var = 0;
-            f = l;    
+            f = literal::create(0);
         }
     } else {
         // std::cout << " is not in A, ";
-        auto l = new literal;
-        l->var = 0;
-        f = l;
+        f = literal::create(0);
     }
     // std::cout << "root: " << f->to_string() << std::endl;
     clauses.push_back(f);
@@ -90,46 +86,46 @@ void InterpolantCreator::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
 
     // std::cout << "CHAIN[" << clauses.size() << "]: " << clauses[cs[0]]->to_string()
     //           << "[" << cs[0] << "] [x";
-    formula* f = clauses[cs[0]]->copy();
+    formula* f = clauses[cs[0]];
     for (uint64_t i = 0; i < xs.size(); i++) {
         assert(cs[i+1] >= 0 && cs[i+1] < clauses.size());
         // std::cout  << xs[i] << "] " << clauses[cs[i+1]]->to_string() << "[" << cs[i+1] << "] ";
         if (is_true(clauses[cs[i+1]]) && var_b.count(xs[i]) == 0) { // f | T = T
-            f = clauses[cs[i]]->copy();
+            f = clauses[cs[i]];
         } else if (var_b.count(xs[i]) == 0) { // f | g
-            if (!f->is_literal() && to_junction_formula(f)->conn == connective::OR) {
-                to_junction_formula(f)->subformulas.push_back(clauses[cs[i+1]]);
-            } else if (!is_true(f)) {
-                auto nf = new junction_formula;
-                nf->conn = connective::OR;
-                nf->subformulas.push_back(f);
-                if (!clauses[cs[i+1]]->is_literal() && to_junction_formula(clauses[cs[i+1]])->conn == connective::OR) {
-                    for (auto& sf : *to_junction_formula(clauses[cs[i+1]])) {
-                        nf->subformulas.push_back(sf);
-                    }
-                } else {
-                    nf->subformulas.push_back(clauses[cs[i+1]]);
-                }
-                f = nf;
-            }
+            f = junction_formula::create_disjunction(f, clauses[cs[i+1]]);
+            // if (!f->is_literal() && to_junction_formula(f)->conn == connective::OR) {
+            //     to_junction_formula(f)->sf.insert(clauses[cs[i+1]]);
+            // } else if (!is_true(f)) {
+            //     auto nf = junction_formula::create(connective::OR);
+            //     nf->sf.insert(f);
+            //     if (!clauses[cs[i+1]]->is_literal() && to_junction_formula(clauses[cs[i+1]])->conn == connective::OR) {
+            //         for (auto& sf : *to_junction_formula(clauses[cs[i+1]])) {
+            //             nf->sf.insert(sf);
+            //         }
+            //     } else {
+            //         nf->sf.insert(clauses[cs[i+1]]);
+            //     }
+            //     f = nf;
+            // }
         } else if (!is_true(clauses[cs[i+1]])) { // f & g
-            if (!f->is_literal() && to_junction_formula(f)->conn == connective::AND) {
-                to_junction_formula(f)->subformulas.push_back(clauses[cs[i+1]]);
-            } else if (is_true(f)) {
-                f = clauses[cs[i+1]]->copy();
-            } else {
-                auto nf = new junction_formula;
-                nf->conn = connective::AND;
-                nf->subformulas.push_back(f);
-                if (!clauses[cs[i+1]]->is_literal() && to_junction_formula(clauses[cs[i+1]])->conn == connective::AND) {
-                    for (auto& sf : *to_junction_formula(clauses[cs[i+1]])) {
-                        nf->subformulas.push_back(sf);
-                    }
-                } else {
-                    nf->subformulas.push_back(clauses[cs[i+1]]);
-                }
-                f = nf;
-            }
+            f = junction_formula::create_conjunction(f, clauses[cs[i+1]]);
+            // if (!f->is_literal() && to_junction_formula(f)->conn == connective::AND) {
+            //     to_junction_formula(f)->sf.insert(clauses[cs[i+1]]);
+            // } else if (is_true(f)) {
+            //     f = clauses[cs[i+1]];
+            // } else {
+            //     auto nf = junction_formula::create(connective::AND);
+            //     nf->sf.insert(f);
+            //     if (!clauses[cs[i+1]]->is_literal() && to_junction_formula(clauses[cs[i+1]])->conn == connective::AND) {
+            //         for (auto& sf : *to_junction_formula(clauses[cs[i+1]])) {
+            //             nf->sf.insert(sf);
+            //         }
+            //     } else {
+            //         nf->sf.insert(clauses[cs[i+1]]);
+            //     }
+            //     f = nf;
+            // }
         }
     }
     // if (!f->is_literal()) {
@@ -144,7 +140,7 @@ std::set<uint64_t> get_vars(formula* cnf) {
     for (const auto& cl : *cnf_j) {
         auto cl_j = to_disjunction(cl);
         for (const auto& l : *cl_j) {
-            auto v = to_literal(l)->var;
+            auto v = to_literal(l)->var();
             res.insert(v/2);
         }
     }
@@ -187,15 +183,16 @@ bool interpolation(circuit&& c) {
             auto c = to_cnf(interpolant);
             std::cout << "interpolant cnf: " << c->to_string() << std::endl;
             // cnf_debug(c);
-            if (equal(a, c)) {
+            if (equal_cnf(a, c)) {
                 std::cout << "Interpolant is same as in previous round" << std::endl;
                 return false;
             }
-            auto temp = new junction_formula;
-            temp->conn = connective::OR;
-            temp->subformulas.push_back(a);
-            temp->subformulas.push_back(interpolant);
-            // std::cout << "new initial: " << formula_to_string(temp) << std::endl;
+            std::cout << a->to_string() << std::endl;
+            formula_set sf;
+            sf.insert(a);
+            sf.insert(interpolant);
+            auto temp = junction_formula::create(connective::OR, std::move(sf));
+            std::cout << "new initial: " << temp->to_string() << std::endl;
             a = to_cnf(temp);
             b.set_a(a);
             if (b.run(k)) {
