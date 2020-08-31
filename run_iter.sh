@@ -2,7 +2,7 @@
 file=$1
 num=$2
 
-cmake . -DCMAKE_BUILD_TYPE=Debug
+cmake . -DCMAKE_BUILD_TYPE=Release
 make
 
 for i in $(seq 0 $num); do

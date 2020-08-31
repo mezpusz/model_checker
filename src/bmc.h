@@ -7,7 +7,7 @@
 
 class bmc {
 public:
-    bmc(circuit&& c);
+    bmc(circuit&& c, formula_store* store);
 
     void reset();
     bool run(uint64_t k);
@@ -28,4 +28,5 @@ private:
     Proof* _p = nullptr;
     formula* _a;
     formula* _b;
+    formula_store* _store;
 };

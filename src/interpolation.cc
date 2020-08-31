@@ -52,19 +52,19 @@ void InterpolantCreator::root(const vec<Lit>& c) {
             if (var_b.count(var(c[i])) == 0) { // var not in A
                 continue;
             }
-            auto l = literal::create(var(c[i])*2 + sign(c[i]));
+            auto l = store->create(var(c[i])*2 + sign(c[i]));
             if (f == nullptr) {
                 f = l;
             } else {
-                f = junction_formula::create_disjunction(f, l);
+                f = store->create_disjunction(f, l);
             }
         }
         if (f == nullptr) {
-            f = literal::create(0);
+            f = store->create(0);
         }
     } else {
         // std::cout << " is not in A, ";
-        f = literal::create(0);
+        f = store->create(0);
     }
     // std::cout << "root: " << f->to_string() << std::endl;
     clauses.push_back(f);
@@ -81,12 +81,16 @@ void InterpolantCreator::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     for (uint64_t i = 0; i < xs.size(); i++) {
         assert(cs[i+1] >= 0 && cs[i+1] < clauses.size());
         // std::cout  << xs[i] << "] " << clauses[cs[i+1]]->to_string() << "[" << cs[i+1] << "] ";
-        if (is_true(clauses[cs[i+1]]) && var_b.count(xs[i]) == 0) { // f | T = T
-            f = clauses[cs[i]];
-        } else if (var_b.count(xs[i]) == 0) { // f | g
-            f = junction_formula::create_disjunction(f, clauses[cs[i+1]]);
-        } else if (!is_true(clauses[cs[i+1]])) { // f & g
-            f = junction_formula::create_conjunction(f, clauses[cs[i+1]]);
+        junction_formula* temp;
+        if (var_b.count(xs[i]) == 0) { // f | g
+            temp = store->create_disjunction(f, clauses[cs[i+1]]);
+        } else { // f & g
+            temp = store->create_conjunction(f, clauses[cs[i+1]]);
+        }
+        if (temp->size() == 1) {
+            f = *temp->begin();
+        } else {
+            f = temp;
         }
     }
     clauses.push_back(f);
@@ -105,43 +109,53 @@ std::set<uint64_t> get_vars(formula* cnf) {
     return res;
 }
 
-formula* create_interpolant(formula* a, formula* b, Proof* p) {
+formula* create_interpolant(formula* a, formula* b, Proof* p, formula_store* store) {
     auto v_a = get_vars(a);
     auto v_b = get_vars(b);
-    InterpolantCreator ic(v_a, v_b, a);
+    InterpolantCreator ic(v_a, v_b, a, store);
     p->traverse(ic);
 
     return ic.clauses.back();
 }
 
-bool interpolation(circuit&& c) {
+bool interpolation(circuit&& c, formula_store* store) {
     auto shift = c.shift();
-    bmc b(std::move(c));
+    bmc b(std::move(c), store);
 
     uint64_t k = 1;
     while (true) {
         std::cout << "k=" << k << std::endl;
         b.reset();
         auto a = b.create_initial();
-        merge(a, duplicate(b.create_ands(), shift));
-        merge(a, b.create_transition());
+        merge(a, duplicate(b.create_ands(), shift, store), store);
+        merge(a, b.create_transition(), store);
         b.set_a(a);
         if (b.run(k)) {
             std::cout << "Sat in first round of k=" << k << std::endl;
             return true;
         }
         while (true) {
-            auto interpolant = create_interpolant(a, b.get_b(), b.get_proof());
-            auto c = to_cnf(interpolant);
-            if (equal_cnf(a, c)) {
+            auto interpolant = create_interpolant(a, b.get_b(), b.get_proof(), store);
+            auto b_j = to_junction_formula(b.get_b());
+            store->decrease_junction_refcount(b_j->conn(), b_j->sub(), false);
+            auto c = to_cnf(interpolant, store);
+            // since they contain the same variables, the formulas should be
+            // only equal when they are exactly the same
+            if (a == c) {
                 std::cout << "Interpolant is same as in previous round" << std::endl;
                 return false;
             }
-            formula_set sf;
-            sf.insert(a);
-            sf.insert(interpolant);
-            auto temp = junction_formula::create(connective::OR, std::move(sf));
-            a = to_cnf(temp);
+            // formula_set sf;
+            // sf.insert(a);
+            // sf.insert(interpolant);
+            // auto temp = junction_formula::create(connective::OR, std::move(sf));
+            store->log_static();
+            auto temp = a;
+            a = to_cnf(a, interpolant, store);
+            auto t_j = to_junction_formula(temp);
+            store->decrease_junction_refcount(t_j->conn(), t_j->sub(), false);
+            store->log_static();
+            b.reset();
             b.set_a(a);
             if (b.run(k)) {
                 k++;
