@@ -156,13 +156,13 @@ inline junction_formula* to_junction_formula(formula* f) {
 
 inline junction_formula* to_conjunction(formula* f) {
     auto res = to_junction_formula(f);
-    assert(res->conn == connective::AND);
+    assert(res->conn() == connective::AND);
     return res;
 }
 
 inline junction_formula* to_disjunction(formula* f) {
     auto res = to_junction_formula(f);
-    assert(res->conn == connective::OR);
+    assert(res->conn() == connective::OR);
     return res;
 }
 

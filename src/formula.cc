@@ -215,6 +215,10 @@ junction_formula* formula_store::create(connective c, formula_set&& sf) {
         res.first->second->sf = new formula_set(res.first->first);
         auto res2 = r.insert(std::make_pair(sf, 0));
         assert(res2.second);
+        // std::cout << "created " << res.first->second->to_string() << std::endl;
+    }
+    else {
+        // std::cout << "queried " << res.first->second->to_string() << std::endl;
     }
     r.at(sf)++;
     return res.first->second;
@@ -285,11 +289,24 @@ void formula_store::decrease_junction_refcount(connective c, const formula_set& 
         auto it2 = m.find(sf);
         assert(it2 != m.end());
         // std::cout << "deleted " << it2->second->to_string() << std::endl;
+        delete it2->second->sf;
         delete it2->second;
         m.erase(it2);
+        if (subformulas) {
+            for (const auto& f : sf) {
+                // std::cout << "deleted sf: " << f->to_string() << std::endl;
+                if (f->is_literal()) {
+                    decrease_literal_refcount(to_literal(f)->var());
+                } else {
+                    auto f_j = to_junction_formula(f);
+                    decrease_junction_refcount(f_j->conn(), f_j->sub(), true);
+                }
+            }
+        }
     } else {
         it->second--;
     }
+
 }
 
 formula_set formula_store::merge_subformulas(connective c, formula* f1, formula* f2) {

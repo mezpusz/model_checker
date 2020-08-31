@@ -137,6 +137,7 @@ bool interpolation(circuit&& c, formula_store* store) {
         while (true) {
             auto interpolant = create_interpolant(a, b.get_b(), b.get_proof(), store);
             auto b_j = to_junction_formula(b.get_b());
+            // TODO: should be true in 3rd arg
             store->decrease_junction_refcount(b_j->conn(), b_j->sub(), false);
             auto c = to_cnf(interpolant, store);
             // since they contain the same variables, the formulas should be
@@ -153,7 +154,7 @@ bool interpolation(circuit&& c, formula_store* store) {
             auto temp = a;
             a = to_cnf(a, interpolant, store);
             auto t_j = to_junction_formula(temp);
-            store->decrease_junction_refcount(t_j->conn(), t_j->sub(), false);
+            store->decrease_junction_refcount(t_j->conn(), t_j->sub(), true);
             store->log_static();
             b.reset();
             b.set_a(a);

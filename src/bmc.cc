@@ -18,7 +18,11 @@ bmc::bmc(circuit&& c, formula_store* store)
 }
 
 void bmc::reset() {
-    _a = _store->create(connective::AND);
+    // _a = _store->create(connective::AND);
+    // if (_b != nullptr) {
+    //     auto b_j = to_junction_formula(_b);
+    //     _store->decrease_junction_refcount(b_j->conn(), b_j->sub(), true);
+    // }
     _b = _store->create(connective::AND);
 }
 
