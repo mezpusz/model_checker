@@ -102,22 +102,13 @@ public:
 private:
     formula_set merge_subformulas(connective c, formula* f1, formula* f2);
 
-    std::map<formula_set, junction_formula*>& get(connective c) {
+    std::map<formula_set, std::pair<junction_formula*, uint64_t>>& get(connective c) {
         return c == connective::AND ? ands : ors;
     }
 
-    std::map<formula_set, uint64_t>& get_refcount(connective c) {
-        return c == connective::AND ? ands_refcount : ors_refcount;
-    }
-
-    std::map<uint64_t, literal*> literals;
-    std::map<uint64_t, uint64_t> literals_refcount;
-
-    std::map<formula_set, junction_formula*> ands;
-    std::map<formula_set, uint64_t> ands_refcount;
-
-    std::map<formula_set, junction_formula*> ors;
-    std::map<formula_set, uint64_t> ors_refcount;
+    std::map<uint64_t, std::pair<literal*, uint64_t>> literals;
+    std::map<formula_set, std::pair<junction_formula*, uint64_t>> ands;
+    std::map<formula_set, std::pair<junction_formula*, uint64_t>> ors;
 };
 
 struct conjunction {

@@ -134,15 +134,22 @@ bool interpolation(circuit&& c, formula_store* store) {
             std::cout << "Sat in first round of k=" << k << std::endl;
             return true;
         }
+        unsigned i = 0;
         while (true) {
             auto interpolant = create_interpolant(a, b.get_b(), b.get_proof(), store);
             auto b_j = to_junction_formula(b.get_b());
             // TODO: should be true in 3rd arg
-            store->decrease_junction_refcount(b_j->conn(), b_j->sub(), false);
-            auto c = to_cnf(interpolant, store);
+            store->decrease_junction_refcount(b_j->conn(), b_j->sub(), true);
+
+            // auto c = to_cnf(interpolant, store);
+
+
             // since they contain the same variables, the formulas should be
             // only equal when they are exactly the same
-            if (a == c) {
+
+            auto temp = a;
+            a = to_cnf(a, interpolant, store);
+            if (a == temp) {
                 std::cout << "Interpolant is same as in previous round" << std::endl;
                 return false;
             }
@@ -151,14 +158,19 @@ bool interpolation(circuit&& c, formula_store* store) {
             // sf.insert(interpolant);
             // auto temp = junction_formula::create(connective::OR, std::move(sf));
             store->log_static();
-            auto temp = a;
-            a = to_cnf(a, interpolant, store);
+            
+            // auto temp = a;
+            // a = to_cnf(a, interpolant, store);
+
+
             auto t_j = to_junction_formula(temp);
             store->decrease_junction_refcount(t_j->conn(), t_j->sub(), true);
             store->log_static();
             b.reset();
             b.set_a(a);
+            i++;
             if (b.run(k)) {
+                std::cout << i << " iterations inside" << std::endl;
                 k++;
                 break;
             }
