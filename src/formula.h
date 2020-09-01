@@ -11,7 +11,7 @@ using clause = std::set<uint64_t>;
 
 class less {
 public:
-    bool operator()(const clause& lhs, const clause& rhs) {
+    bool operator()(const clause& lhs, const clause& rhs) const {
         if (std::includes(rhs.begin(), rhs.end(), lhs.begin(), lhs.end())) {
             return false;
         }
@@ -19,7 +19,7 @@ public:
     }
 };
 
-using Cnf = std::set<clause, less>;
+using Cnf = std::set<clause>;
 
 std::string literal_to_string(uint64_t n);
 

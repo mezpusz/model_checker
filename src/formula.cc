@@ -21,6 +21,12 @@ uint64_t negate_literal(uint64_t lit) {
 }
 
 void merge(Cnf& lhs, const Cnf& rhs) {
+    clause cl;
+    if (lhs.count(cl) || rhs.count(cl)) {
+        lhs.clear();
+        lhs.insert(std::move(cl));
+        return;
+    }
     lhs.insert(rhs.begin(), rhs.end());
 }
 
@@ -73,12 +79,14 @@ std::ostream& operator<<(std::ostream& out, const clause& cl) {
 
 
 std::ostream& operator<<(std::ostream& out, const Cnf& cnf) {
+    out << "(";
     for (auto it = cnf.begin(); it != cnf.end();) {
         out << *it;
         if (++it != cnf.end()) {
             out << " & ";
         }
     }
+    out << ")";
     return out;
 }
 
@@ -87,17 +95,17 @@ Cnf to_cnf_or(Cnf& lhs, Cnf& rhs) {
     // clean(rhs);
     Cnf res;
     for (const auto& cl1 : lhs) {
+        bool t = false;
+        for (const auto& lit : cl1) {
+            if (cl1.count(negate_literal(lit))) {
+                t = true;
+                break;
+            }
+        }
+        if (t) {
+            continue;
+        }
         for (const auto& cl2 : rhs) {
-            bool t = false;
-            for (const auto& lit : cl1) {
-                if (cl2.count(negate_literal(lit))) {
-                    t = true;
-                    break;
-                }
-            }
-            if (t) {
-                continue;
-            }
             if (lhs.size() > 1 && rhs.size() > 1 &&
                 (std::includes(cl1.begin(), cl1.end(), cl2.begin(), cl2.end())
                 || std::includes(cl2.begin(), cl2.end(), cl1.begin(), cl1.end()))) {

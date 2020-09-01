@@ -4,23 +4,13 @@
 #include "helper.h"
 
 bool check_contains(Cnf cnf, const vec<Lit>& cl) {
-    std::set<uint64_t> cl_o;
+    clause cl_o;
     for (int i = 0; i < cl.size(); i++) {
         cl_o.insert(var(cl[i])*2 + sign(cl[i]));
     }
-
+    // std::cout << cl_o << "\t" << cnf << std::endl;
     for (const auto& cl : cnf) {
-        if (cl_o.empty() && cl.empty()) {
-            return true;
-        }
-        bool found = !cl.empty();
-        for (const auto& l : cl) {
-            if (cl_o.count(l) == 0) {
-                found = false;
-                break;
-            }
-        }
-        if (found) {
+        if (cl_o == cl) {
             return true;
         }
     }
@@ -46,18 +36,16 @@ void InterpolantCreator::root(const vec<Lit>& c) {
         clause cl;
         // std::cout << " is in A, ";
         for (int i = 0; i < c.size(); i++) {
-            if (var_b.count(var(c[i])) == 0) { // var not in A
+            if (!var_b.count(var(c[i]))) { // var not in B
                 continue;
             }
             cl.insert(var(c[i])*2 + sign(c[i]));
         }
         f.insert(std::move(cl));
     } else {
-        // clause cl;
-        // cl.insert(0);
-        // f.insert(std::move(cl));
+        // std::cout << " not in A, ";
     }
-    // std::cout << "root: " << f->to_string() << std::endl;
+    // std::cout << "formula: " << f << std::endl;
     clauses.push_back(f);
 }
 
@@ -66,18 +54,20 @@ void InterpolantCreator::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     assert(cs.size() > 1);
     assert(cs[0] >= 0 && cs[0] < clauses.size());
 
-    // std::cout << "CHAIN[" << clauses.size() << "]: " << clauses[cs[0]]->to_string()
-    //           << "[" << cs[0] << "] [x";
+    // std::cout << "chain" << std::endl;
+    // std::cout << "CHAIN[" << clauses.size() << "]: " << xs.size() << std::endl; //<< clauses[cs[0]]->to_string()
+            //   << "[" << cs[0] << "] [x";
     Cnf f = clauses[cs[0]];
     for (uint64_t i = 0; i < xs.size(); i++) {
         assert(cs[i+1] >= 0 && cs[i+1] < clauses.size());
         // std::cout  << xs[i] << "] " << clauses[cs[i+1]]->to_string() << "[" << cs[i+1] << "] ";
-        if (var_b.count(xs[i]) == 0) { // f | g
+        if (!var_b.count(xs[i])) { // f | g
             f = to_cnf_or(f, clauses[cs[i+1]]);
         } else { // f & g
             merge(f, clauses[cs[i+1]]);
         }
     }
+    // std::cout << "chain: " << f << std::endl;
     clauses.push_back(f);
 }
 
@@ -92,6 +82,7 @@ std::set<uint64_t> get_vars(const Cnf& cnf) {
 }
 
 Cnf create_interpolant(const Cnf& a, const Cnf& b, Proof* p) {
+    // std::cout << "B: " << b << std::endl;
     auto v_a = get_vars(a);
     auto v_b = get_vars(b);
     InterpolantCreator ic(v_a, v_b, a);
@@ -121,25 +112,24 @@ bool interpolation(circuit&& c) {
         while (true) {
             auto temp = create_interpolant(a, b.get_b(), b.get_proof());
             // clean(temp);
-            std::cout << "interpolant: " << temp << std::endl;
+            // std::cout << "interpolant: " << temp << std::endl;
 
             if (temp == interpolant) {
                 std::cout << "Interpolant is same as in previous round" << std::endl;
                 return false;
             }
             interpolant = std::move(temp);
-            a = to_cnf_or(a, interpolant);
+            auto temp2 = duplicate(interpolant, -shift);
+            a = to_cnf_or(a, temp2);
             // clean(a);
             b.reset();
             b.set_a(&a);
             i++;
             if (b.run(k)) {
-                std::cout << i << " iterations inside" << std::endl;
+                // std::cout << i << " iterations inside" << std::endl;
                 k++;
                 break;
             }
-
-            std::cout << "7" << std::endl;
         }
     }
 }
