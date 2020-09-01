@@ -7,17 +7,17 @@
 
 class bmc {
 public:
-    bmc(circuit&& c, formula_store* store);
+    bmc(circuit&& c);
 
     void reset();
     bool run(uint64_t k);
     Proof* get_proof();
-    void set_a(formula* a);
-    formula* get_b();
+    void set_a(const Cnf* a);
+    const Cnf& get_b();
 
-    formula* create_initial();
-    formula* create_ands();
-    formula* create_transition();
+    Cnf create_initial();
+    Cnf create_ands();
+    Cnf create_transition();
 
 private:
     void create_ands(uint64_t k);
@@ -26,7 +26,6 @@ private:
 
     circuit _c;
     Proof* _p = nullptr;
-    formula* _a;
-    formula* _b;
-    formula_store* _store;
+    const Cnf* _a;
+    Cnf _b;
 };

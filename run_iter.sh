@@ -1,4 +1,6 @@
 
+set -euo "pipefail"
+
 file=$1
 num=$2
 

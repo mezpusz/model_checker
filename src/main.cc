@@ -28,23 +28,20 @@ int main(int argc, char** argv) {
     if (!parse_aiger_file(input_file, c)) {
         return -1;
     }
-    formula_store store;
 
     if (k == -1) {
-        std::cout << (interpolation(std::move(c), &store) ? "sat" : "unsat") << std::endl;
+        std::cout << (interpolation(std::move(c)) ? "sat" : "unsat") << std::endl;
     } else {
         auto shift = c.shift();
-        bmc b(std::move(c), &store);
+        bmc b(std::move(c));
         auto initial = b.create_initial();
         if (k > 0) {
-            merge(initial, duplicate(b.create_ands(), shift, &store), &store);
-            merge(initial, b.create_transition(), &store);
+            merge(initial, duplicate(b.create_ands(), shift));
+            merge(initial, b.create_transition());
         }
-        b.set_a(initial);
+        b.set_a(&initial);
         std::cout << (b.run(k) ? "sat" : "unsat") << std::endl;
     }
-
-    store.log_static();
 
     return 0;
 }

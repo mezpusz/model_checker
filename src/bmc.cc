@@ -11,49 +11,43 @@
 #include "minisat/Solver.h"
 #include "minisat/Sort.h"
 
-bmc::bmc(circuit&& c, formula_store* store)
-    : _c(c), _a(), _b(), _store(store)
+bmc::bmc(circuit&& c)
+    : _c(c), _a(), _b()
 {
     reset();
 }
 
 void bmc::reset() {
-    // _a = _store->create(connective::AND);
-    // if (_b != nullptr) {
-    //     auto b_j = to_junction_formula(_b);
-    //     _store->decrease_junction_refcount(b_j->conn(), b_j->sub(), true);
-    // }
-    _b = _store->create(connective::AND);
+    _b.clear();
 }
 
-void bmc::set_a(formula* a) {
+void bmc::set_a(const Cnf* a) {
     _a = a;
 }
 
-formula* bmc::get_b() {
+const Cnf& bmc::get_b() {
     return _b;
 }
 
-formula* bmc::create_initial() {
-    formula* res = _store->create(connective::AND);
+Cnf bmc::create_initial() {
+    Cnf res;
     for (const auto& [i, o] : _c.latches) {
+        clause cl;
         assert(o%2==0); // maybe smth needs to be changed when negative latch outputs are possible
-        auto l = _store->create(o);
-        formula_set sf;
-        sf.insert(negate_literal(l, _store));
-        add_clause(res, _store->create(connective::OR, std::move(sf)), _store);
+        cl.insert(negate_literal(o));
+        res.insert(cl);
     }
     auto a = create_ands();
-    add_clause(res, a, _store);
+    merge(res, a);
     return res;
 }
 
-formula* bmc::create_ands() {
-    formula* res = _store->create(connective::AND);
+Cnf bmc::create_ands() {
+    Cnf res;
     for (const auto& [i1, i2, o] : _c.ands) {
-        conjunction conj1(_store->create(i1), _store->create(i2));
-        conjunction conj2(_store->create(o));
-        add_equiv(res, conj1, conj2, _store);
+        conjunction conj1(i1, i2);
+        conjunction conj2(o);
+        add_equiv(res, conj1, conj2);
     }
     return res;
 }
@@ -62,31 +56,31 @@ void bmc::create_ands(uint64_t k) {
     auto temp = create_ands();
     const auto shift = _c.shift();
     for (uint64_t i = 2; i <= k; i++) {
-        merge(_b, duplicate(temp, shift*i, _store), _store);
+        merge(_b, duplicate(temp, shift*i));
     }
 }
 
 void bmc::create_bad(uint64_t k) {
     const auto shift = _c.shift();
-    formula_set sf;
+    clause cl;
     for (const auto& o : _c.outputs) {
         for (uint64_t i = 0; i <= k; i++) {
-            sf.insert(_store->create(o + i*shift));
+            cl.insert(o + i*shift);
         }
     }
-    add_clause(_b, _store->create(connective::OR, std::move(sf)), _store);
+    _b.insert(cl);
 }
 
-formula* bmc::create_transition() {
-    formula* temp = _store->create(connective::AND);
+Cnf bmc::create_transition() {
+    Cnf res;
     // transitions from 0 to 1
     const auto shift = _c.shift();
     for (const auto& [i,o] : _c.latches) {
-        conjunction conj1(_store->create(i));
-        conjunction conj2(_store->create(o+shift));
-        add_equiv(temp, conj1, conj2, _store);
+        conjunction conj1(i);
+        conjunction conj2(o+shift);
+        add_equiv(res, conj1, conj2);
     }
-    return temp;
+    return res;
 }
 
 void bmc::create_transition(uint64_t k) {
@@ -98,7 +92,7 @@ void bmc::create_transition(uint64_t k) {
 
     // transitions from 1 to 2, ..., k-1 to k
     for (uint64_t i = 1; i < k; i++) {
-        merge(_b, duplicate(temp, shift*i, _store), _store);
+        merge(_b, duplicate(temp, shift*i));
     }
 }
 
@@ -110,15 +104,14 @@ bool bmc::run(uint64_t k) {
     Solver S;
     _p = new Proof();
     S.proof = _p;
-    formula* c = _store->create(connective::AND);
-    _a->manual_refcount = true;
-    _b->manual_refcount = true;
-    merge(c, _a, _store);
-    merge(c, _b, _store);
+    Cnf c;
+    merge(c, *_a);
+    merge(c, _b);
 #if LOGGING
     circuit_debug(_c);
-    cnf_debug(c);
 #endif
+    // std::cout << "b: " << _b << std::endl;
+    // std::cout << "bmc: " << c << std::endl;
     to_dimacs(c, S);
     S.solve();
 #if LOGGING

@@ -7,8 +7,8 @@
 #include "minisat/Sort.h"
 
 struct InterpolantCreator : public ProofTraverser {
-    InterpolantCreator(std::set<uint64_t> v_a, std::set<uint64_t> v_b, formula* a, formula_store* store)
-        : var_a(v_a), var_b(v_b), a(a), store(store)
+    InterpolantCreator(std::set<uint64_t> v_a, std::set<uint64_t> v_b, Cnf a)
+        : var_a(v_a), var_b(v_b), a(a)
     {}
 
     void root(const vec<Lit>& c) override;
@@ -16,11 +16,10 @@ struct InterpolantCreator : public ProofTraverser {
 
     std::set<uint64_t> var_a;
     std::set<uint64_t> var_b;
-    formula* a;
+    Cnf a;
 
-    std::vector<formula*> clauses;
-    formula_store* store;
+    std::vector<Cnf> clauses;
 };
 
-formula* create_interpolant(formula* a, formula* b, Proof* p, formula_store* store);
-bool interpolation(circuit&& c, formula_store* store);
+Cnf create_interpolant(const Cnf& a, const Cnf& b, Proof* p);
+bool interpolation(circuit&& c);
