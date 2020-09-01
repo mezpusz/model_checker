@@ -93,15 +93,14 @@ Cnf create_interpolant(const Cnf& a, const Cnf& b, Proof* p) {
 
 bool interpolation(circuit&& c) {
     auto shift = c.shift();
+    std::cout << shift << std::endl;
     bmc b(std::move(c));
 
     uint64_t k = 1;
     while (true) {
         std::cout << "k=" << k << std::endl;
         b.reset();
-        auto a = b.create_initial();
-        merge(a, duplicate(b.create_ands(), shift));
-        merge(a, b.create_transition());
+        auto a = b.create_a(k);
         b.set_a(&a);
         if (b.run(k)) {
             std::cout << "Sat in first round of k=" << k << std::endl;
@@ -119,7 +118,9 @@ bool interpolation(circuit&& c) {
                 return false;
             }
             interpolant = std::move(temp);
+            // std::cout << interpolant << std::endl << std::endl;
             auto temp2 = duplicate(interpolant, -shift);
+            // std::cout << temp2 << std::endl << std::endl;
             a = to_cnf_or(a, temp2);
             // clean(a);
             b.reset();

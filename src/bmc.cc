@@ -29,6 +29,15 @@ const Cnf& bmc::get_b() {
     return _b;
 }
 
+Cnf bmc::create_a(uint64_t k) {
+    auto initial = create_initial();
+    if (k > 0) {
+        merge(initial, duplicate(create_ands(), _c.shift()));
+        merge(initial, create_transition());
+    }
+    return initial;
+}
+
 Cnf bmc::create_initial() {
     Cnf res;
     for (const auto& [i, o] : _c.latches) {
@@ -64,9 +73,10 @@ void bmc::create_bad(uint64_t k) {
     const auto shift = _c.shift();
     clause cl;
     for (const auto& o : _c.outputs) {
-        for (uint64_t i = 0; i <= k; i++) {
-            cl.insert(o + i*shift);
-        }
+        // for (uint64_t i = 0; i <= k; i++) {
+        //     cl.insert(o + i*shift);
+        // }
+        cl.insert(o+k*shift);
     }
     _b.insert(cl);
 }

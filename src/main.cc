@@ -34,12 +34,8 @@ int main(int argc, char** argv) {
     } else {
         auto shift = c.shift();
         bmc b(std::move(c));
-        auto initial = b.create_initial();
-        if (k > 0) {
-            merge(initial, duplicate(b.create_ands(), shift));
-            merge(initial, b.create_transition());
-        }
-        b.set_a(&initial);
+        auto a = b.create_a(k);
+        b.set_a(&a);
         std::cout << (b.run(k) ? "sat" : "unsat") << std::endl;
     }
 

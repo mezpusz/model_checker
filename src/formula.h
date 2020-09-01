@@ -38,7 +38,7 @@ struct conjunction {
 // cnf
 void merge(Cnf& lhs, const Cnf& rhs);
 void add_equiv(Cnf& cnf, const conjunction& conj1, const conjunction& conj2);
-Cnf duplicate(const Cnf& cnf, uint64_t shift);
+Cnf duplicate(const Cnf& cnf, int shift);
 
 // misc
 uint64_t negate_literal(uint64_t lit);

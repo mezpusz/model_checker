@@ -53,7 +53,7 @@ void add_equiv(Cnf& cnf, const conjunction& conj1, const conjunction& conj2) {
     }
 }
 
-Cnf duplicate(const Cnf& cnf, uint64_t shift) {
+Cnf duplicate(const Cnf& cnf, int shift) {
     Cnf res;
     for (const auto& cl : cnf) {
         clause res_cl;
