@@ -3,6 +3,7 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
+#include <functional>
 
 std::string literal_to_string(uint64_t n) {
     if (n == 0) {
@@ -27,29 +28,6 @@ void merge(Cnf& lhs, const Cnf& rhs) {
     //     return;
     // }
     lhs.insert(rhs.begin(), rhs.end());
-}
-
-void add_equiv(Cnf& cnf, const conjunction& conj1, const conjunction& conj2) {
-    clause cl;
-    for (const auto& l : conj1.c) {
-        cl.insert(negate_literal(l));
-    }
-    for (const auto& l : conj2.c) {
-        assert(cl.count(l)==0);
-        cl.insert(l);
-        cnf.insert(cl);
-        cl.erase(l);
-    }
-    cl.clear();
-    for (const auto& l : conj2.c) {
-        cl.insert(negate_literal(l));
-    }
-    for (const auto& l : conj1.c) {
-        assert(cl.count(l)==0);
-        cl.insert(l);
-        cnf.insert(cl);
-        cl.erase(l);
-    }
 }
 
 Cnf duplicate(const Cnf& cnf, int shift) {

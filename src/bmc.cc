@@ -3,7 +3,6 @@
 #include <cstdlib>
 
 #include "aiger_parser.h"
-#include "dimacs.h"
 #include "formula.h"
 #include "helper.h"
 #include "log.h"
@@ -11,125 +10,147 @@
 #include "minisat/Solver.h"
 #include "minisat/Sort.h"
 
-bmc::bmc(circuit&& c)
-    : _c(c), _a(), _b()
+bmc::bmc(const circuit& c)
+    : _c(c),
+      _a(),
+      _clauses_a(),
+      _vars_b()
 {
-    reset();
 }
 
-void bmc::reset() {
-    _b.clear();
+const std::set<uint64_t>& bmc::get_vars_b() {
+    return _vars_b;
 }
 
-void bmc::set_a(const Cnf* a) {
-    _a = a;
+const std::set<clause>& bmc::get_clauses_a() {
+    return _clauses_a;
 }
 
-const Cnf& bmc::get_b() {
-    return _b;
-}
-
-Cnf bmc::create_a(uint64_t k, Cnf* interpolant) {
-    auto res = create_initial();
-    if (interpolant != nullptr) {
-        res = to_cnf_or(res, *interpolant);
-    }
-    auto ands = create_ands();
-    merge(res, ands);
+void bmc::create_a(uint64_t k, const Cnf& interpolant) {
+    create_initial(interpolant);
+    create_ands(0, true);
     if (k > 0) {
-        merge(res, duplicate(ands, _c.shift()));
-        merge(res, create_transition());
+        create_ands(1, true);
+        create_transition(0, true);
     }
-    return res;
 }
 
-Cnf bmc::create_initial() {
-    Cnf res;
+void bmc::create_initial(const Cnf& interpolant) {
     for (const auto& [i, o] : _c.latches) {
-        clause cl;
-        assert(o%2==0); // maybe smth needs to be changed when negative latch outputs are possible
-        cl.insert(negate_literal(o));
-        res.insert(cl);
+        for (auto cl : interpolant) {
+            assert(o%2==0); // maybe smth needs to be changed when negative latch outputs are possible
+            cl.insert(negate_literal(o));
+            add_clause(cl, true);
+        }
     }
-    return res;
 }
 
-Cnf bmc::create_ands() {
-    Cnf res;
+void bmc::create_ands(uint64_t k, bool for_a) {
+    auto shift = k*_c.shift();
     for (const auto& [i1, i2, o] : _c.ands) {
-        conjunction conj1(i1, i2);
-        conjunction conj2(o);
-        add_equiv(res, conj1, conj2);
+        conjunction conj1(i1+shift, i2+shift);
+        conjunction conj2(o+shift);
+        add_equiv(conj1, conj2, for_a);
     }
-    return res;
 }
 
 void bmc::create_ands(uint64_t k) {
-    auto temp = create_ands();
-    const auto shift = _c.shift();
     for (uint64_t i = 2; i <= k; i++) {
-        merge(_b, duplicate(temp, shift*i));
+        create_ands(i, false);
     }
 }
 
 void bmc::create_bad(uint64_t k) {
-    const auto shift = _c.shift();
     clause cl;
     for (const auto& o : _c.outputs) {
-        cl.insert(o+k*shift);
+        cl.insert(o+k*_c.shift());
     }
-    _b.insert(cl);
+    add_clause(cl, false);
 }
 
-Cnf bmc::create_transition() {
-    Cnf res;
-    // transitions from 0 to 1
+void bmc::create_transition(uint64_t k, bool for_a) {
     for (const auto& [i,o] : _c.latches) {
-        conjunction conj1(i);
-        conjunction conj2(o+_c.shift());
-        add_equiv(res, conj1, conj2);
+        conjunction conj1(i+k*_c.shift());
+        conjunction conj2(o+(k+1)*_c.shift());
+        add_equiv(conj1, conj2, for_a);
     }
-    return res;
 }
 
 void bmc::create_transition(uint64_t k) {
     if (k < 2) {
         return;
     }
-    auto temp = create_transition();
-    const auto shift = _c.shift();
-
-    // transitions from 1 to 2, ..., k-1 to k
     for (uint64_t i = 1; i < k; i++) {
-        merge(_b, duplicate(temp, shift*i));
+        create_transition(i, false);
     }
 }
 
-bool bmc::run(uint64_t k) {
-    reset();
+void bmc::add_equiv(const conjunction& conj1, const conjunction& conj2, bool for_a) {
+    clause cl;
+    for (const auto& l : conj1.c) {
+        cl.insert(negate_literal(l));
+    }
+    for (const auto& l : conj2.c) {
+        assert(cl.count(l)==0);
+        cl.insert(l);
+        add_clause(cl, for_a);
+        cl.erase(l);
+    }
+    cl.clear();
+    for (const auto& l : conj2.c) {
+        cl.insert(negate_literal(l));
+    }
+    for (const auto& l : conj1.c) {
+        assert(cl.count(l)==0);
+        cl.insert(l);
+        add_clause(cl, for_a);
+        cl.erase(l);
+    }
+}
+
+void bmc::add_clause(const clause& cl, bool for_a) {
+    if (for_a) {
+        _clauses_a.insert(cl);
+    }
+    vec<Lit> lits;
+    int parsed_lit, var;
+    for (const auto& lit : cl) {
+        parsed_lit = (lit%2==0) ? lit/2 : -((lit-1)/2);
+        var = abs(parsed_lit);
+        if (!for_a) {
+            _vars_b.insert(var);
+        }
+        while (var >= _s->nVars())
+        {
+            _s->newVar();
+        }
+        lits.push((parsed_lit > 0) ? Lit(var) : ~Lit(var));
+    }
+    _s->addClause(lits);
+}
+
+bool bmc::run(uint64_t k, const Cnf& interpolant) {
+    Solver s;
+    s.proof = new Proof();
+    _p = s.proof;
+    _s = &s;
+
+    create_a(k, interpolant);
     create_ands(k);
     create_bad(k);
     create_transition(k);
 
-    Solver S;
-    _p = new Proof();
-    S.proof = _p;
-    Cnf c;
-    merge(c, *_a);
-    merge(c, _b);
+    s.solve();
+
 #if LOGGING
     circuit_debug(_c);
 #endif
-    // std::cout << "b: " << _b << std::endl;
-    // std::cout << "bmc: " << c << std::endl;
-    to_dimacs(c, S);
-    S.solve();
 #if LOGGING
-    if (S.okay()) {
-        for (uint64_t i = 0; i < S.nVars(); i++) {
-            if (S.model[i] != l_Undef) {
+    if (_s.okay()) {
+        for (uint64_t i = 0; i < _s.nVars(); i++) {
+            if (_s.model[i] != l_Undef) {
                 std::cout << ((i==0) ? "" : " ")
-                          << ((S.model[i]==l_True) ? "" : "~")
+                          << ((_s.model[i]==l_True) ? "" : "~")
                           << "x"
                           << i+1;
             }
@@ -138,10 +159,11 @@ bool bmc::run(uint64_t k) {
     }
     std::cout << std::endl;
 #endif
-    // printStats(S.stats);
-    // checkProof(S.proof);
+    // printStats(_s.stats);
+    // checkProof(_s.proof);
 
-    return S.okay();
+    _s = nullptr;
+    return s.okay();
 }
 
 Proof* bmc::get_proof() {

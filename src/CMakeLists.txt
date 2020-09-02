@@ -6,8 +6,6 @@ add_executable(model_checker aiger_parser.cc
                              bmc.h
                              circuit.cc
                              circuit.h
-                             dimacs.cc
-                             dimacs.h
                              formula.cc
                              formula.h
                              helper.cc

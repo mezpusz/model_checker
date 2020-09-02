@@ -32,10 +32,10 @@ int main(int argc, char** argv) {
     if (k == -1) {
         std::cout << (interpolation(std::move(c)) ? "sat" : "unsat") << std::endl;
     } else {
-        bmc b(std::move(c));
-        auto a = b.create_a(k);
-        b.set_a(&a);
-        std::cout << (b.run(k) ? "sat" : "unsat") << std::endl;
+        bmc b(c);
+        Cnf temp;
+        temp.emplace();
+        std::cout << (b.run(k, temp) ? "sat" : "unsat") << std::endl;
     }
 
     return 0;

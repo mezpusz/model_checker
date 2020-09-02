@@ -1,24 +1,11 @@
 #pragma once
 
 #include <set>
-#include <map>
 #include <string>
 #include <vector>
-#include <functional>
 #include <cassert>
 
 using clause = std::set<uint64_t>;
-
-class less {
-public:
-    bool operator()(const clause& lhs, const clause& rhs) const {
-        if (std::includes(rhs.begin(), rhs.end(), lhs.begin(), lhs.end())) {
-            return false;
-        }
-        return std::less<clause>()(lhs, rhs);
-    }
-};
-
 using Cnf = std::set<clause>;
 
 std::string literal_to_string(uint64_t n);
@@ -36,8 +23,6 @@ struct conjunction {
 };
 
 // cnf
-void merge(Cnf& lhs, const Cnf& rhs);
-void add_equiv(Cnf& cnf, const conjunction& conj1, const conjunction& conj2);
 Cnf duplicate(const Cnf& cnf, int shift);
 
 // misc

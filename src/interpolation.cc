@@ -5,20 +5,6 @@
 
 #define LOGGING 0
 
-bool check_contains(Cnf cnf, const vec<Lit>& cl) {
-    clause cl_o;
-    for (int i = 0; i < cl.size(); i++) {
-        cl_o.insert(var(cl[i])*2 + sign(cl[i]));
-    }
-    // std::cout << cl_o << "\t" << cnf << std::endl;
-    for (const auto& cl : cnf) {
-        if (cl_o == cl) {
-            return true;
-        }
-    }
-    return false;
-}
-
 std::string to_string(const vec<Lit>& c) {
     std::string res;
     for (int i = 0; i < c.size(); i++) {
@@ -36,7 +22,11 @@ void InterpolantCreator::root(const vec<Lit>& c) {
 #if LOGGING
     std::cout << "ROOT[" << clauses.size() << "]: " << to_string(c);
 #endif
-    if (check_contains(a, c)) {
+    clause cl;
+    for (int i = 0; i < c.size(); i++) {
+        cl.insert(var(c[i])*2 + sign(c[i]));
+    }
+    if (clauses_a.count(cl)) {
         clause cl;
 #if LOGGING
         std::cout << " is in A, ";
@@ -83,7 +73,7 @@ void InterpolantCreator::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
 #if LOGGING
             std::cout << "in B, ";
 #endif
-            merge(f, clauses[cs[i+1]]);
+            f.insert(clauses[cs[i+1]].begin(), clauses[cs[i+1]].end());
         }
 #if LOGGING
         std::cout << clauses[cs[i+1]] << "[" << cs[i+1] << "] [x";
@@ -95,46 +85,34 @@ void InterpolantCreator::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     clauses.push_back(f);
 }
 
-std::set<uint64_t> get_vars(const Cnf& cnf) {
-    std::set<uint64_t> res;
-    for (const auto& cl : cnf) {
-        for (const auto& l : cl) {
-            res.insert(l/2);
-        }
-    }
-    return res;
-}
-
-Cnf create_interpolant(const Cnf& a, const Cnf& b, Proof* p) {
+Cnf create_interpolant(const std::set<uint64_t>& v_b, const std::set<clause>& clauses_a, Proof* p) {
 #if LOGGING
     std::cout << "B: " << b << std::endl;
 #endif
-    auto v_a = get_vars(a);
-    auto v_b = get_vars(b);
-    InterpolantCreator ic(v_a, v_b, a);
+    InterpolantCreator ic(v_b, clauses_a);
     p->traverse(ic);
 
     return ic.clauses.back();
 }
 
-bool interpolation(circuit&& c) {
+bool interpolation(circuit c) {
     auto shift = c.shift();
     std::cout << shift << std::endl;
-    bmc b(std::move(c));
+    bmc b(c);
 
     uint64_t k = 1;
     while (k<shift) {
         std::cout << "k=" << k << std::endl;
-        auto a = b.create_a(k);
-        b.set_a(&a);
-        if (b.run(k)) {
+        Cnf temp;
+        temp.emplace();
+        if (b.run(k, temp)) {
             std::cout << "Sat in first round of k=" << k << std::endl;
             return true;
         }
         unsigned i = 0;
         Cnf interpolant;
         while (true) {
-            auto temp = create_interpolant(a, b.get_b(), b.get_proof());
+            auto temp = create_interpolant(b.get_vars_b(), b.get_clauses_a(), b.get_proof());
             clean(temp);
             std::cout << "interpolant: " << temp << std::endl;
 
@@ -148,14 +126,8 @@ bool interpolation(circuit&& c) {
 #if LOGGING
             std::cout << "interpolant: " << temp2 << std::endl;
 #endif
-            a = b.create_a(k, &temp2);
-#if LOGGING
-            std::cout << "new initial: " << a << std::endl;
-#endif
-            // clean(a);
-            b.set_a(&a);
             i++;
-            if (b.run(k)) {
+            if (b.run(k, temp2)) {
                 std::cout << i << " iterations inside" << std::endl;
                 k++;
                 break;

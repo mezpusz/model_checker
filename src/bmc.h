@@ -7,25 +7,30 @@
 
 class bmc {
 public:
-    bmc(circuit&& c);
+    bmc(const circuit& c);
+    bmc& operator=(bmc& b) = default;
 
-    void reset();
-    bool run(uint64_t k);
+    bool run(uint64_t k, const Cnf& interpolant);
     Proof* get_proof();
-    void set_a(const Cnf* a);
-    const Cnf& get_b();
-    Cnf create_a(uint64_t k, Cnf* interpolant = nullptr);
+    const std::set<uint64_t>& get_vars_b();
+    const std::set<clause>& get_clauses_a();
 
 private:
-    Cnf create_initial();
-    Cnf create_ands();
-    Cnf create_transition();
+    void create_a(uint64_t k, const Cnf& interpolant);
+    void create_initial(const Cnf& interpolant);
+    void create_ands(uint64_t k, bool for_a);
     void create_ands(uint64_t k);
     void create_bad(uint64_t k);
+    void create_transition(uint64_t k, bool for_a);
     void create_transition(uint64_t k);
 
+    void add_equiv(const conjunction& conj1, const conjunction& conj2, bool for_a);
+    void add_clause(const clause& cnf, bool for_a);
+
     circuit _c;
-    Proof* _p = nullptr;
+    Solver* _s;
+    Proof* _p;
     const Cnf* _a;
-    Cnf _b;
+    std::set<clause> _clauses_a;
+    std::set<uint64_t> _vars_b;
 };
