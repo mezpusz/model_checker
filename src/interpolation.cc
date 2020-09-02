@@ -3,6 +3,8 @@
 #include "bmc.h"
 #include "helper.h"
 
+#define LOGGING 0
+
 bool check_contains(Cnf cnf, const vec<Lit>& cl) {
     clause cl_o;
     for (int i = 0; i < cl.size(); i++) {
@@ -31,10 +33,14 @@ std::string to_string(const vec<Lit>& c) {
 
 void InterpolantCreator::root(const vec<Lit>& c) {
     Cnf f;
-    // std::cout << "ROOT[" << clauses.size() << "]: " << to_string(c);
+#if LOGGING
+    std::cout << "ROOT[" << clauses.size() << "]: " << to_string(c);
+#endif
     if (check_contains(a, c)) {
         clause cl;
-        // std::cout << " is in A, ";
+#if LOGGING
+        std::cout << " is in A, ";
+#endif
         for (int i = 0; i < c.size(); i++) {
             if (!var_b.count(var(c[i]))) { // var not in B
                 continue;
@@ -43,9 +49,13 @@ void InterpolantCreator::root(const vec<Lit>& c) {
         }
         f.insert(std::move(cl));
     } else {
-        // std::cout << " not in A, ";
+#if LOGGING
+        std::cout << " not in A, ";
+#endif
     }
-    // std::cout << "formula: " << f << std::endl;
+#if LOGGING
+    std::cout << f << std::endl;
+#endif
     clauses.push_back(f);
 }
 
@@ -54,20 +64,34 @@ void InterpolantCreator::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     assert(cs.size() > 1);
     assert(cs[0] >= 0 && cs[0] < clauses.size());
 
-    // std::cout << "chain" << std::endl;
-    // std::cout << "CHAIN[" << clauses.size() << "]: " << xs.size() << std::endl; //<< clauses[cs[0]]->to_string()
-            //   << "[" << cs[0] << "] [x";
+#if LOGGING
+    std::cout << "CHAIN[" << clauses.size() << "]: " << clauses[cs[0]]
+              << "[" << cs[0] << "] [x";
+#endif
     Cnf f = clauses[cs[0]];
     for (uint64_t i = 0; i < xs.size(); i++) {
         assert(cs[i+1] >= 0 && cs[i+1] < clauses.size());
-        // std::cout  << xs[i] << "] " << clauses[cs[i+1]]->to_string() << "[" << cs[i+1] << "] ";
+#if LOGGING
+        std::cout  << xs[i] << "] ";
+#endif
         if (!var_b.count(xs[i])) { // f | g
+#if LOGGING
+            std::cout << "not in B, ";
+#endif
             f = to_cnf_or(f, clauses[cs[i+1]]);
         } else { // f & g
+#if LOGGING
+            std::cout << "in B, ";
+#endif
             merge(f, clauses[cs[i+1]]);
         }
+#if LOGGING
+        std::cout << clauses[cs[i+1]] << "[" << cs[i+1] << "] [x";
+#endif
     }
-    // std::cout << "chain: " << f << std::endl;
+#if LOGGING
+    std::cout << '\t' << f << std::endl;
+#endif
     clauses.push_back(f);
 }
 
@@ -82,7 +106,9 @@ std::set<uint64_t> get_vars(const Cnf& cnf) {
 }
 
 Cnf create_interpolant(const Cnf& a, const Cnf& b, Proof* p) {
-    // std::cout << "B: " << b << std::endl;
+#if LOGGING
+    std::cout << "B: " << b << std::endl;
+#endif
     auto v_a = get_vars(a);
     auto v_b = get_vars(b);
     InterpolantCreator ic(v_a, v_b, a);
@@ -97,9 +123,8 @@ bool interpolation(circuit&& c) {
     bmc b(std::move(c));
 
     uint64_t k = 1;
-    while (true) {
+    while (k<shift) {
         std::cout << "k=" << k << std::endl;
-        b.reset();
         auto a = b.create_a(k);
         b.set_a(&a);
         if (b.run(k)) {
@@ -110,8 +135,8 @@ bool interpolation(circuit&& c) {
         Cnf interpolant;
         while (true) {
             auto temp = create_interpolant(a, b.get_b(), b.get_proof());
-            // clean(temp);
-            // std::cout << "interpolant: " << temp << std::endl;
+            clean(temp);
+            std::cout << "interpolant: " << temp << std::endl;
 
             if (temp == interpolant) {
                 std::cout << "Interpolant is same as in previous round" << std::endl;
@@ -120,14 +145,18 @@ bool interpolation(circuit&& c) {
             interpolant = std::move(temp);
             // std::cout << interpolant << std::endl << std::endl;
             auto temp2 = duplicate(interpolant, -shift);
-            // std::cout << temp2 << std::endl << std::endl;
-            a = to_cnf_or(a, temp2);
+#if LOGGING
+            std::cout << "interpolant: " << temp2 << std::endl;
+#endif
+            a = b.create_a(k, &temp2);
+#if LOGGING
+            std::cout << "new initial: " << a << std::endl;
+#endif
             // clean(a);
-            b.reset();
             b.set_a(&a);
             i++;
             if (b.run(k)) {
-                // std::cout << i << " iterations inside" << std::endl;
+                std::cout << i << " iterations inside" << std::endl;
                 k++;
                 break;
             }

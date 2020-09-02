@@ -14,7 +14,7 @@ public:
     Proof* get_proof();
     void set_a(const Cnf* a);
     const Cnf& get_b();
-    Cnf create_a(uint64_t k);
+    Cnf create_a(uint64_t k, Cnf* interpolant = nullptr);
 
 private:
     Cnf create_initial();

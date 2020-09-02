@@ -29,13 +29,18 @@ const Cnf& bmc::get_b() {
     return _b;
 }
 
-Cnf bmc::create_a(uint64_t k) {
-    auto initial = create_initial();
-    if (k > 0) {
-        merge(initial, duplicate(create_ands(), _c.shift()));
-        merge(initial, create_transition());
+Cnf bmc::create_a(uint64_t k, Cnf* interpolant) {
+    auto res = create_initial();
+    if (interpolant != nullptr) {
+        res = to_cnf_or(res, *interpolant);
     }
-    return initial;
+    auto ands = create_ands();
+    merge(res, ands);
+    if (k > 0) {
+        merge(res, duplicate(ands, _c.shift()));
+        merge(res, create_transition());
+    }
+    return res;
 }
 
 Cnf bmc::create_initial() {
@@ -46,8 +51,6 @@ Cnf bmc::create_initial() {
         cl.insert(negate_literal(o));
         res.insert(cl);
     }
-    auto a = create_ands();
-    merge(res, a);
     return res;
 }
 
@@ -73,9 +76,6 @@ void bmc::create_bad(uint64_t k) {
     const auto shift = _c.shift();
     clause cl;
     for (const auto& o : _c.outputs) {
-        // for (uint64_t i = 0; i <= k; i++) {
-        //     cl.insert(o + i*shift);
-        // }
         cl.insert(o+k*shift);
     }
     _b.insert(cl);
@@ -84,10 +84,9 @@ void bmc::create_bad(uint64_t k) {
 Cnf bmc::create_transition() {
     Cnf res;
     // transitions from 0 to 1
-    const auto shift = _c.shift();
     for (const auto& [i,o] : _c.latches) {
         conjunction conj1(i);
-        conjunction conj2(o+shift);
+        conjunction conj2(o+_c.shift());
         add_equiv(res, conj1, conj2);
     }
     return res;
@@ -107,6 +106,7 @@ void bmc::create_transition(uint64_t k) {
 }
 
 bool bmc::run(uint64_t k) {
+    reset();
     create_ands(k);
     create_bad(k);
     create_transition(k);

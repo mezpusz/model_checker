@@ -32,7 +32,6 @@ int main(int argc, char** argv) {
     if (k == -1) {
         std::cout << (interpolation(std::move(c)) ? "sat" : "unsat") << std::endl;
     } else {
-        auto shift = c.shift();
         bmc b(std::move(c));
         auto a = b.create_a(k);
         b.set_a(&a);
