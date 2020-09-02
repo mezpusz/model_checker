@@ -1,7 +1,3 @@
-
-#include <iostream>
-#include <cstdlib>
-
 #include "aiger_parser.h"
 #include "bmc.h"
 #include "interpolation.h"
@@ -19,11 +15,6 @@ int main(int argc, char** argv) {
         k = atoi(argv[2]);
     }
 
-    // if (k == -1) {
-    //     std::cerr << "Bound was not given as argument" << std::endl;
-    //     return -1;
-    // }
-
     circuit c;
     if (!parse_aiger_file(input_file, c)) {
         return -1;
@@ -36,6 +27,7 @@ int main(int argc, char** argv) {
         Cnf temp;
         temp.emplace();
         std::cout << (b.run(k, temp) ? "sat" : "unsat") << std::endl;
+        delete b.get_proof();
     }
 
     return 0;

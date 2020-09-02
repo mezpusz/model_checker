@@ -24,7 +24,7 @@ private:
     void create_transition(uint64_t k, bool for_a);
     void create_transition(uint64_t k);
 
-    void add_equiv(const conjunction& conj1, const conjunction& conj2, bool for_a);
+    void add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs, bool for_a);
     void add_clause(const clause& cnf, bool for_a);
 
     circuit _c;

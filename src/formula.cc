@@ -21,27 +21,6 @@ uint64_t negate_literal(uint64_t lit) {
     return (lit%2 == 0) ? (lit + 1) : (lit - 1);
 }
 
-void merge(Cnf& lhs, const Cnf& rhs) {
-    // if (lhs.count(cl) || rhs.count(cl)) {
-    //     lhs.clear();
-    //     lhs.emplace();
-    //     return;
-    // }
-    lhs.insert(rhs.begin(), rhs.end());
-}
-
-Cnf duplicate(const Cnf& cnf, int shift) {
-    Cnf res;
-    for (const auto& cl : cnf) {
-        clause res_cl;
-        for (const auto& lit : cl) {
-            res_cl.insert(lit + shift);
-        }
-        res.insert(std::move(res_cl));
-    }
-    return res;
-}
-
 std::ostream& operator<<(std::ostream& out, const clause& cl) {
     out << "(";
     for (auto it = cl.begin(); it != cl.end();) {
@@ -53,7 +32,6 @@ std::ostream& operator<<(std::ostream& out, const clause& cl) {
     out << ")";
     return out;
 }
-
 
 std::ostream& operator<<(std::ostream& out, const Cnf& cnf) {
     out << "(";
@@ -67,12 +45,12 @@ std::ostream& operator<<(std::ostream& out, const Cnf& cnf) {
     return out;
 }
 
-Cnf to_cnf_or(Cnf& lhs, Cnf& rhs) {
+Cnf to_cnf_or(const Cnf& lhs, const Cnf& rhs) {
     Cnf res;
     for (const auto& cl1 : lhs) {
         // bool t = false;
-        // for (const auto& lit : cl1.first) {
-        //     if (cl1.first.count(negate_literal(lit))) {
+        // for (const auto& lit : cl1) {
+        //     if (cl1.count(negate_literal(lit))) {
         //         t = true;
         //         break;
         //     }
@@ -81,11 +59,11 @@ Cnf to_cnf_or(Cnf& lhs, Cnf& rhs) {
         //     continue;
         // }
         for (const auto& cl2 : rhs) {
-            //     if (lhs.size() > 1 && rhs.size() > 1 &&
-            //         (std::includes(cl1.first.begin(), cl1.first.end(), cl2.first.begin(), cl2.first.end())
-            //         || std::includes(cl2.first.begin(), cl2.first.end(), cl1.first.begin(), cl1.first.end()))) {
-            //         break;
-            //     }
+            // if (lhs.size() > 1 && rhs.size() > 1 &&
+            //     (std::includes(cl1.begin(), cl1.end(), cl2.begin(), cl2.end())
+            //     || std::includes(cl2.begin(), cl2.end(), cl1.begin(), cl1.end()))) {
+            //     break;
+            // }
             auto cl = cl1;
             cl.insert(cl2.begin(), cl2.end());
             res.insert(std::move(cl));
@@ -101,7 +79,6 @@ void clean(Cnf& cnf) {
         okay = true;
         for (const auto& lit : *it) {
             if (it->count(negate_literal(lit))) {
-                // std::cout << *it << " contains literal and its negation" << std::endl;
                 okay = false;
                 break;
             }
@@ -111,7 +88,6 @@ void clean(Cnf& cnf) {
         }
         for (auto it2 = cnf.begin(); it2 != cnf.end(); it2++) {
             if (it != it2 && std::includes(it2->begin(), it2->end(), it->begin(), it->end())) {
-                // std::cout << *it2 << " includes " << *it << std::endl;
                 okay = false;
                 break;
             }

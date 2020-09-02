@@ -5,7 +5,6 @@
 #include "aiger_parser.h"
 #include "formula.h"
 #include "helper.h"
-#include "log.h"
 
 #include "minisat/Solver.h"
 #include "minisat/Sort.h"
@@ -48,9 +47,7 @@ void bmc::create_initial(const Cnf& interpolant) {
 void bmc::create_ands(uint64_t k, bool for_a) {
     auto shift = k*_c.shift();
     for (const auto& [i1, i2, o] : _c.ands) {
-        conjunction conj1(i1+shift, i2+shift);
-        conjunction conj2(o+shift);
-        add_equiv(conj1, conj2, for_a);
+        add_equiv({ i1+shift, i2+shift }, o+shift, for_a);
     }
 }
 
@@ -70,9 +67,7 @@ void bmc::create_bad(uint64_t k) {
 
 void bmc::create_transition(uint64_t k, bool for_a) {
     for (const auto& [i,o] : _c.latches) {
-        conjunction conj1(i+k*_c.shift());
-        conjunction conj2(o+(k+1)*_c.shift());
-        add_equiv(conj1, conj2, for_a);
+        add_equiv({ i+k*_c.shift() }, o+(k+1)*_c.shift(), for_a);
     }
 }
 
@@ -85,22 +80,16 @@ void bmc::create_transition(uint64_t k) {
     }
 }
 
-void bmc::add_equiv(const conjunction& conj1, const conjunction& conj2, bool for_a) {
+void bmc::add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs, bool for_a) {
     clause cl;
-    for (const auto& l : conj1.c) {
+    for (const auto& l : lhs) {
         cl.insert(negate_literal(l));
     }
-    for (const auto& l : conj2.c) {
-        assert(cl.count(l)==0);
-        cl.insert(l);
-        add_clause(cl, for_a);
-        cl.erase(l);
-    }
+    cl.insert(rhs);
+    add_clause(cl, for_a);
     cl.clear();
-    for (const auto& l : conj2.c) {
-        cl.insert(negate_literal(l));
-    }
-    for (const auto& l : conj1.c) {
+    cl.insert(negate_literal(rhs));
+    for (const auto& l : lhs) {
         assert(cl.count(l)==0);
         cl.insert(l);
         add_clause(cl, for_a);
