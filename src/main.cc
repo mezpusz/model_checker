@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
         Cnf temp;
         temp.emplace();
         std::cout << (b.run(k, temp) ? "sat" : "unsat") << std::endl;
-        delete b.get_proof();
+        delete b._p;
     }
 
     return 0;

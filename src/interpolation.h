@@ -8,7 +8,7 @@
 
 struct InterpolantCreator : public ProofTraverser {
     InterpolantCreator(int shift, const std::set<uint64_t>& v_b, const std::set<clause>& clauses_a)
-        : shift(shift), var_b(v_b), clauses_a(clauses_a)
+        : shift(shift), var_b(v_b), clauses_a(clauses_a), clauses()
     {}
 
     void root(const vec<Lit>& c) override;

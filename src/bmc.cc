@@ -10,19 +10,12 @@
 #include "minisat/Sort.h"
 
 bmc::bmc(const circuit& c)
-    : _c(c),
-      _a(),
+    : _p(),
       _clauses_a(),
-      _vars_b()
+      _vars_b(),
+      _c(c),
+      _s()
 {
-}
-
-const std::set<uint64_t>& bmc::get_vars_b() {
-    return _vars_b;
-}
-
-const std::set<clause>& bmc::get_clauses_a() {
-    return _clauses_a;
 }
 
 void bmc::create_a(uint64_t k, const Cnf& interpolant) {
@@ -124,6 +117,8 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     _p = s.proof;
     _s = &s;
 
+    _clauses_a.clear();
+    _vars_b.clear();
     create_a(k, interpolant);
     create_ands(k);
     create_bad(k);
@@ -148,13 +143,9 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     }
     std::cout << std::endl;
 #endif
-    // printStats(_s.stats);
-    // checkProof(_s.proof);
+    // printStats(_s->stats);
+    // checkProof(_s->proof);
 
     _s = nullptr;
     return s.okay();
-}
-
-Proof* bmc::get_proof() {
-    return _p;
 }

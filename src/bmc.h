@@ -8,12 +8,12 @@
 class bmc {
 public:
     bmc(const circuit& c);
-    bmc& operator=(bmc& b) = default;
 
     bool run(uint64_t k, const Cnf& interpolant);
-    Proof* get_proof();
-    const std::set<uint64_t>& get_vars_b();
-    const std::set<clause>& get_clauses_a();
+
+    Proof* _p;
+    std::set<clause> _clauses_a;
+    std::set<uint64_t> _vars_b;
 
 private:
     void create_a(uint64_t k, const Cnf& interpolant);
@@ -29,8 +29,4 @@ private:
 
     circuit _c;
     Solver* _s;
-    Proof* _p;
-    const Cnf* _a;
-    std::set<clause> _clauses_a;
-    std::set<uint64_t> _vars_b;
 };

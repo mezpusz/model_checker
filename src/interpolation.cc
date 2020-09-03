@@ -7,7 +7,7 @@ void InterpolantCreator::root(const vec<Lit>& c) {
     Cnf f;
     clause cl;
     for (int i = 0; i < c.size(); i++) {
-        cl.insert(var(c[i])*2 + sign(c[i]));
+        cl.insert(index(c[i]));
     }
     if (clauses_a.count(cl)) {
         clause cl;
@@ -15,7 +15,7 @@ void InterpolantCreator::root(const vec<Lit>& c) {
             if (!var_b.count(var(c[i]))) { // var not in B
                 continue;
             }
-            cl.insert((var(c[i])*2 + sign(c[i]))-shift); // we already shift all variables back here
+            cl.insert(index(c[i])-shift); // we already shift all variables back here
         }
         f.insert(std::move(cl));
     }
@@ -59,7 +59,7 @@ bool interpolation(circuit c) {
         unsigned i = 0;
         Cnf interpolant;
         while (true) {
-            auto temp = create_interpolant(shift, b.get_vars_b(), b.get_clauses_a(), b.get_proof());
+            auto temp = create_interpolant(shift, b._vars_b, b._clauses_a, b._p);
             clean(temp);
             // std::cout << "interpolant: " << temp << std::endl;
 
