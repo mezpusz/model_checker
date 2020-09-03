@@ -2,8 +2,6 @@
 
 #include <set>
 #include <map>
-#include <sstream>
-#include <iostream>
 #include <vector>
 
 struct circuit {
@@ -15,5 +13,3 @@ struct circuit {
 
     uint64_t shift() const { return 2*M; }
 };
-
-void circuit_debug(const circuit& c);

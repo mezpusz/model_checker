@@ -3,30 +3,38 @@
 #include "circuit.h"
 #include "formula.h"
 
+#include <iostream>
+
 #include "minisat/Solver.h"
 
-class bmc {
+#define LOGGING 0
+
+class bmc : public ProofTraverser {
 public:
     bmc(const circuit& c);
 
     bool run(uint64_t k, const Cnf& interpolant);
+    Cnf get_interpolant();
 
-    Proof* _p;
-    std::set<clause> _clauses_a;
-    std::set<uint64_t> _vars_b;
+    void root(const vec<Lit>& c) override;
+    void chain(const vec<ClauseId>& cs, const vec<Var>& xs) override;
+    void deleted(ClauseId c) override;
 
 private:
     void create_a(uint64_t k, const Cnf& interpolant);
     void create_initial(const Cnf& interpolant);
-    void create_ands(uint64_t k, bool for_a);
     void create_ands(uint64_t k);
-    void create_bad(uint64_t k);
-    void create_transition(uint64_t k, bool for_a);
     void create_transition(uint64_t k);
 
-    void add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs, bool for_a);
-    void add_clause(const clause& cnf, bool for_a);
+    void add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs);
+    void add_clause(const clause& cnf);
 
+    std::vector<Cnf> _clauses;
+#ifdef LOGGING
+    vec<vec<Lit>> clauses;
+#endif
+    std::set<uint64_t> _vars_b;
     circuit _c;
     Solver* _s;
+    bool _phase_b;
 };

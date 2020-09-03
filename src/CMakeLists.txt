@@ -4,11 +4,8 @@ add_executable(model_checker aiger_parser.cc
                              aiger_parser.h
                              bmc.cc
                              bmc.h
-                             circuit.cc
                              circuit.h
                              formula.h
-                             helper.cc
-                             helper.h
                              interpolation.cc
                              interpolation.h
                              main.cc
