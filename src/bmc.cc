@@ -8,7 +8,9 @@
 #include "minisat/Solver.h"
 #include "minisat/Sort.h"
 
-#ifdef LOGGING
+#define LOGGING 0
+
+#if LOGGING
 void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
 {
     Lit     p;
@@ -32,8 +34,12 @@ void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
         }
     }
 
-    if (!ok1 || !ok2)
-        printf("PROOF ERROR! Resolved on missing variable: %d\n", x+1);
+    if (!ok1 || !ok2) {
+        std::cout << "PROOF ERROR! Resolved on missing variable: " << (x+1) << std::endl
+                  << main << std::endl
+                  << other << std::endl;
+        assert(false);
+    }
 
     sortUnique(main);
 }
@@ -53,11 +59,7 @@ Cnf bmc::get_interpolant() {
 
 void bmc::root(const vec<Lit>& c) {
 #if LOGGING
-    std::cout << clauses.size() << ": ROOT";
-    for (int i = 0; i < c.size(); i++) {
-        std::cout << " " << (sign(c[i])?"~":"") << "x" << var(c[i]);
-    }
-    std::cout << std::endl;
+    std::cout << clauses.size() << ": ROOT " << c << std::endl;
     clauses.push();
     c.copyTo(clauses.last());
 #endif
@@ -88,14 +90,10 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     clauses.push();
     vec<Lit>& c = clauses.last();
     clauses[cs[0]].copyTo(c);
-    for (int i = 0; i < xs.size(); i++)
+    for (int i = 0; i < xs.size(); i++) {
         resolve(c, clauses[cs[i+1]], xs[i]);
-    // printf(" =>"); for (int i = 0; i < c.size(); i++) printf(" %s%d", sign(c[i])?"-":"", var(c[i])+1); printf("\n");
-    std::cout << " =>";
-    for (int i = 0; i < c.size(); i++) {
-        std::cout << " " << (sign(c[i])?"~":"") << "x" << var(c[i]);
     }
-    std::cout << std::endl;
+    std::cout << " =>" << c << std::endl;
 #endif
     Cnf f = _clauses[cs[0]];
     for (int i = 0; i < xs.size(); i++) {
@@ -109,8 +107,8 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
 }
 
 void bmc::deleted(ClauseId c) {
-    // assert(false);
 #if LOGGING
+    std::cout << "deleted " << c << std::endl;
     clauses[c].clear();
 #endif
 }
@@ -188,6 +186,9 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     s.proof = &p;
     _s = &s;
 
+#if LOGGING
+    clauses.clear();
+#endif
     _clauses.clear();
     _vars_b.clear();
     _phase_b = true;

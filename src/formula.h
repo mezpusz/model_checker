@@ -7,6 +7,8 @@
 #include <functional>
 #include <sstream>
 
+#include "minisat/SolverTypes.h"
+
 using clause = std::set<uint64_t>;
 using Cnf = std::set<clause>;
 
@@ -43,6 +45,23 @@ inline std::ostream& operator<<(std::ostream& out, const Cnf& cnf) {
     for (auto it = cnf.begin(); it != cnf.end();) {
         out << *it;
         if (++it != cnf.end()) {
+            out << " & ";
+        }
+    }
+    out << ")";
+    return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const Lit& lit) {
+    out << (sign(lit) ? "~" : "") << "x" << var(lit);
+    return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const vec<Lit>& lits) {
+    out << "(";
+    for (int i = 0; i < lits.size(); i++) {
+        out << lits[i];
+        if (i+1 < lits.size()) {
             out << " & ";
         }
     }

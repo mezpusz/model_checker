@@ -19,7 +19,7 @@ bool interpolation(circuit c) {
         unsigned i = 0;
         auto interpolant = b.get_interpolant();
         clean(interpolant);
-        // std::cout << "interpolant: " << interpolant << std::endl;
+        std::cout << "interpolant: " << interpolant << std::endl;
 
         while (true) {
             if (b.run(k, interpolant)) {
@@ -29,7 +29,7 @@ bool interpolation(circuit c) {
             }
             auto temp = b.get_interpolant();
             clean(temp);
-            // std::cout << "interpolant: " << temp << std::endl;
+            std::cout << "interpolant: " << temp << std::endl;
 
             if (temp == interpolant) {
                 std::cout << "Interpolant is same as in previous round" << std::endl;
