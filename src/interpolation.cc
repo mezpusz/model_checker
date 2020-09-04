@@ -3,15 +3,13 @@
 #include "bmc.h"
 
 bool interpolation(circuit c) {
-    auto shift = c.shift();
-    std::cout << shift << std::endl;
-    bmc b(c);
-
+    bmc b(c, true);
     uint64_t k = 1;
-    while (k<shift) {
+
+    while (true) {
         std::cout << "k=" << k << std::endl;
         Cnf temp;
-        temp.emplace();
+        temp.emplace_back();
         if (b.run(k, temp)) {
             std::cout << "Sat in first round of k=" << k << std::endl;
             return true;

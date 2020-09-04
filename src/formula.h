@@ -1,16 +1,14 @@
 #pragma once
 
-#include <set>
-#include <string>
 #include <vector>
-#include <cassert>
 #include <functional>
 #include <sstream>
 
 #include "minisat/SolverTypes.h"
 
-using clause = std::set<uint64_t>;
-using Cnf = std::set<clause>;
+using lit = uint64_t;
+using clause = std::vector<lit>;
+using Cnf = std::vector<clause>;
 
 inline std::string literal_to_string(uint64_t n) {
     if (n == 0) {
@@ -69,56 +67,64 @@ inline std::ostream& operator<<(std::ostream& out, const vec<Lit>& lits) {
     return out;
 }
 
+inline void clean(Cnf& cnf) {
+    auto temp = cnf;
+    bool changed = false;
+    for (uint64_t i = 0; i < cnf.size();) {
+        // remove duplicates
+        std::sort(cnf[i].begin(), cnf[i].end());
+        cnf[i].erase(
+            std::unique(cnf[i].begin(), cnf[i].end()),
+            cnf[i].end());
+        if (!cnf[i].empty()) {
+            bool t = false;
+            // eliminate tautologies (true literals are handled in add_clause)
+            for (uint64_t j = 0; j < cnf[i].size()-1; j++){
+                if (cnf[i][j] == negate_literal(cnf[i][j+1])) {
+                    t = true;
+                    break;
+                }
+            }
+            if (t) {
+                cnf[i] = cnf.back();
+                cnf.pop_back();
+                changed = true;
+                continue;
+            }
+        }
+        i++;
+    }
+    // check for subsumed clauses
+    for (uint64_t i = 0; i < cnf.size();) {
+        bool s = false;
+        for (uint64_t j = 0; j < cnf.size(); j++) {
+            if (i != j && std::includes(cnf[i].begin(), cnf[i].end(), cnf[j].begin(), cnf[j].end())) {
+                s = true;
+                break;
+            }
+        }
+        if (s) {
+            cnf[i] = cnf.back();
+            cnf.pop_back();
+            changed = true;
+            continue;
+        }
+        i++;
+    }
+    std::sort(cnf.begin(), cnf.end());
+    cnf.erase(std::unique(cnf.begin(), cnf.end()), cnf.end());
+    cnf.shrink_to_fit();
+}
+
 inline Cnf to_cnf_or(const Cnf& lhs, const Cnf& rhs) {
     Cnf res;
     for (const auto& cl1 : lhs) {
-        // bool t = false;
-        // for (const auto& lit : cl1) {
-        //     if (cl1.count(negate_literal(lit))) {
-        //         t = true;
-        //         break;
-        //     }
-        // }
-        // if (t) {
-        //     continue;
-        // }
         for (const auto& cl2 : rhs) {
-            // if (lhs.size() > 1 && rhs.size() > 1 &&
-            //     (std::includes(cl1.begin(), cl1.end(), cl2.begin(), cl2.end())
-            //     || std::includes(cl2.begin(), cl2.end(), cl1.begin(), cl1.end()))) {
-            //     break;
-            // }
             auto cl = cl1;
-            cl.insert(cl2.begin(), cl2.end());
-            res.insert(std::move(cl));
+            cl.insert(cl.end(), cl2.begin(), cl2.end());
+            res.push_back(std::move(cl));
         }
     }
+    clean(res);
     return res;
-}
-
-inline void clean(Cnf& cnf) {
-    Cnf res;
-    bool okay;
-    for (auto it = cnf.begin(); it != cnf.end(); it++) {
-        okay = true;
-        for (const auto& lit : *it) {
-            if (it->count(negate_literal(lit))) {
-                okay = false;
-                break;
-            }
-        }
-        if (!okay) {
-            break;
-        }
-        for (auto it2 = cnf.begin(); it2 != cnf.end(); it2++) {
-            if (it != it2 && std::includes(it2->begin(), it2->end(), it->begin(), it->end())) {
-                okay = false;
-                break;
-            }
-        }
-        if (okay) {
-            res.insert(*it);
-        }
-    }
-    cnf = res;
 }

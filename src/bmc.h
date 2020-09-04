@@ -4,6 +4,7 @@
 #include "formula.h"
 
 #include <iostream>
+#include <set>
 
 #include "minisat/Solver.h"
 
@@ -11,7 +12,7 @@
 
 class bmc : public ProofTraverser {
 public:
-    bmc(const circuit& c);
+    bmc(const circuit& c, bool interpolate);
 
     bool run(uint64_t k, const Cnf& interpolant);
     Cnf get_interpolant();
@@ -27,14 +28,15 @@ private:
     void create_transition(uint64_t k);
 
     void add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs);
-    void add_clause(const std::vector<uint64_t>& clause);
+    void add_clause(const clause& cl);
 
     std::vector<Cnf> _clauses;
-#ifdef LOGGING
-    vec<vec<Lit>> clauses;
+#if LOGGING
+    vec<vec<Lit>> _orig_clauses;
 #endif
     std::set<uint64_t> _vars_b;
     circuit _c;
     Solver* _s;
     bool _phase_b;
+    bool _interpolate;
 };

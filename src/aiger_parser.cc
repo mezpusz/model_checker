@@ -51,7 +51,7 @@ bool parse_aiger_file(const std::string& input_file, circuit& out) {
             std::cerr << "input line must contain 1 integer" << std::endl;
             return false;
         }
-        out.inputs.insert(atoi(input[0].c_str()));
+        out.inputs.push_back(atoi(input[0].c_str()));
     }
 
     for (int i = 0; i < L; i++) {
@@ -69,7 +69,7 @@ bool parse_aiger_file(const std::string& input_file, circuit& out) {
             std::cerr << "output line must contain 1 integer" << std::endl;
             return false;
         }
-        out.outputs.insert(atoi(output[0].c_str()));
+        out.outputs.push_back(atoi(output[0].c_str()));
     }
 
     for (int i = 0; i < A; i++) {

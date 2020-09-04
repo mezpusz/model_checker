@@ -8,14 +8,12 @@
 #include "minisat/Solver.h"
 #include "minisat/Sort.h"
 
-#define LOGGING 0
-
 #if LOGGING
 void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
 {
     Lit     p;
     bool    ok1 = false, ok2 = false;
-    for (int i = 0; i < main.size(); i++){
+    for (int i = 0; i < main.size(); i++) {
         if (var(main[i]) == x){
             ok1 = true, p = main[i];
             main[i] = main.last();
@@ -24,32 +22,37 @@ void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
         }
     }
 
-    for (int i = 0; i < other.size(); i++){
-        if (var(other[i]) != x)
+    for (int i = 0; i < other.size(); i++) {
+        if (var(other[i]) != x) {
             main.push(other[i]);
-        else{
-            if (p != ~other[i])
-                printf("PROOF ERROR! Resolved on variable with SAME polarity in both clauses: %d\n", x+1);
+        } else {
+            if (p != ~other[i]) {
+                std::cout << "PROOF ERROR! Resolved on variable with SAME polarity in both clauses: x" << (x+1);
+            }
             ok2 = true;
         }
     }
 
     if (!ok1 || !ok2) {
-        std::cout << "PROOF ERROR! Resolved on missing variable: " << (x+1) << std::endl
+        std::cout << "PROOF ERROR! Resolved on missing variable: x" << (x+1) << std::endl
                   << main << std::endl
                   << other << std::endl;
-        assert(false);
     }
 
     sortUnique(main);
 }
 #endif
 
-bmc::bmc(const circuit& c)
+bmc::bmc(const circuit& c, bool interpolate)
     : _clauses(),
+#if LOGGING
+      _orig_clauses(),
+#endif
       _vars_b(),
       _c(c),
-      _s()
+      _s(),
+      _phase_b(false),
+      _interpolate(interpolate)
 {
 }
 
@@ -58,40 +61,42 @@ Cnf bmc::get_interpolant() {
 }
 
 void bmc::root(const vec<Lit>& c) {
+    if (!_interpolate) {
+        return;
+    }
 #if LOGGING
-    std::cout << clauses.size() << ": ROOT " << c << std::endl;
-    clauses.push();
-    c.copyTo(clauses.last());
+    std::cout << _orig_clauses.size() << ": ROOT " << c << std::endl;
+    _orig_clauses.push();
+    c.copyTo(_orig_clauses.last());
 #endif
     Cnf f;
-    clause cl;
-    for (int i = 0; i < c.size(); i++) {
-        cl.insert(index(c[i]));
-    }
     if (!_phase_b) {
         clause cl;
         for (int i = 0; i < c.size(); i++) {
             if (!_vars_b.count(var(c[i]))) { // var not in B
                 continue;
             }
-            cl.insert(index(c[i])-_c.shift()); // we already shift all variables back here
+            cl.push_back(index(c[i])-_c.shift()); // we already shift all variables back here
         }
-        f.insert(std::move(cl));
+        f.push_back(std::move(cl));
     }
     _clauses.push_back(f);
 }
 
 void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
+    if (!_interpolate) {
+        return;
+    }
 #if LOGGING
-    std::cout << clauses.size() << ": CHAIN " << cs[0];
+    std::cout << _orig_clauses.size() << ": CHAIN " << cs[0];
     for (int i = 0; i < xs.size(); i++) {
         std::cout << " [" << "x" << xs[i] << "] " << cs[i+1];
     }
-    clauses.push();
-    vec<Lit>& c = clauses.last();
-    clauses[cs[0]].copyTo(c);
+    _orig_clauses.push();
+    vec<Lit>& c = _orig_clauses.last();
+    _orig_clauses[cs[0]].copyTo(c);
     for (int i = 0; i < xs.size(); i++) {
-        resolve(c, clauses[cs[i+1]], xs[i]);
+        resolve(c, _orig_clauses[cs[i+1]], xs[i]);
     }
     std::cout << " =>" << c << std::endl;
 #endif
@@ -100,16 +105,20 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
         if (!_vars_b.count(xs[i])) { // f | g
             f = to_cnf_or(f, _clauses[cs[i+1]]);
         } else { // f & g
-            f.insert(_clauses[cs[i+1]].begin(), _clauses[cs[i+1]].end());
+            f.insert(f.end(), _clauses[cs[i+1]].begin(), _clauses[cs[i+1]].end());
         }
     }
     _clauses.push_back(f);
 }
 
 void bmc::deleted(ClauseId c) {
+    if (!_interpolate) {
+        return;
+    }
+    _clauses[c].clear();
 #if LOGGING
     std::cout << "deleted " << c << std::endl;
-    clauses[c].clear();
+    _orig_clauses[c].clear();
 #endif
 }
 
@@ -124,11 +133,9 @@ void bmc::create_a(uint64_t k, const Cnf& interpolant) {
 
 void bmc::create_initial(const Cnf& interpolant) {
     for (const auto& [i, o] : _c.latches) {
-        for (const auto& cl : interpolant) {
-            assert(o%2==0); // maybe smth needs to be changed when negative latch outputs are possible
-            std::vector<uint64_t> res_cl(cl.begin(), cl.end());
-            res_cl.push_back(negate_literal(o));
-            add_clause(res_cl);
+        for (auto cl : interpolant) {
+            cl.push_back(negate_literal(o));
+            add_clause(std::move(cl));
         }
     }
 }
@@ -147,7 +154,7 @@ void bmc::create_transition(uint64_t k) {
 }
 
 void bmc::add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs) {
-    std::vector<uint64_t> cl;
+    clause cl;
     for (const auto& l : lhs) {
         cl.push_back(negate_literal(l));
     }
@@ -162,17 +169,22 @@ void bmc::add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs) {
     }
 }
 
-void bmc::add_clause(const std::vector<uint64_t>& cl) {
+void bmc::add_clause(const clause& cl) {
     vec<Lit> lits;
     int parsed_lit, var;
     for (const auto& lit : cl) {
+        if (lit == 0) { // don't add tautologies
+            return;
+        }
+        if (lit == 1) { // don't add false literals
+            continue;
+        }
         parsed_lit = (lit%2==0) ? lit/2 : -((lit-1)/2);
         var = abs(parsed_lit);
         if (_phase_b) {
             _vars_b.insert(var);
         }
-        while (var >= _s->nVars())
-        {
+        while (var >= _s->nVars()) {
             _s->newVar();
         }
         lits.push((parsed_lit > 0) ? Lit(var) : ~Lit(var));
@@ -187,7 +199,7 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     _s = &s;
 
 #if LOGGING
-    clauses.clear();
+    _orig_clauses.clear();
 #endif
     _clauses.clear();
     _vars_b.clear();
@@ -198,7 +210,7 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
         create_transition(i);
     }
     // bad
-    std::vector<uint64_t> cl;
+    clause cl;
     for (const auto& o : _c.outputs) {
         cl.push_back(o+k*_c.shift());
     }

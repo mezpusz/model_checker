@@ -48,9 +48,9 @@ int main(int argc, char** argv) {
     if (k == -1) {
         std::cout << (interpolation(std::move(c)) ? "sat" : "unsat") << std::endl;
     } else {
-        bmc b(c);
+        bmc b(c, false);
         Cnf temp;
-        temp.emplace();
+        temp.emplace_back();
         std::cout << (b.run(k, temp) ? "sat" : "unsat") << std::endl;
     }
 
