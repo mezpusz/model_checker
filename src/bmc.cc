@@ -153,7 +153,7 @@ void bmc::create_transition(uint64_t k) {
     }
 }
 
-void bmc::add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs) {
+void bmc::add_equiv(const std::vector<lit>& lhs, lit rhs) {
     clause cl;
     for (const auto& l : lhs) {
         cl.push_back(negate_literal(l));

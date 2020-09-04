@@ -10,7 +10,7 @@ using lit = uint64_t;
 using clause = std::vector<lit>;
 using Cnf = std::vector<clause>;
 
-inline std::string literal_to_string(uint64_t n) {
+inline std::string literal_to_string(lit n) {
     if (n == 0) {
         return "T";
     }
@@ -22,7 +22,7 @@ inline std::string literal_to_string(uint64_t n) {
     return str.str();
 }
 
-inline uint64_t negate_literal(uint64_t lit) {
+inline lit negate_literal(lit lit) {
     return (lit%2 == 0) ? (lit + 1) : (lit - 1);
 }
 
@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& out, const vec<Lit>& lits) {
 inline void clean(Cnf& cnf) {
     auto temp = cnf;
     bool changed = false;
-    for (uint64_t i = 0; i < cnf.size();) {
+    for (size_t i = 0; i < cnf.size();) {
         // remove duplicates
         std::sort(cnf[i].begin(), cnf[i].end());
         cnf[i].erase(
@@ -79,7 +79,7 @@ inline void clean(Cnf& cnf) {
         if (!cnf[i].empty()) {
             bool t = false;
             // eliminate tautologies (true literals are handled in add_clause)
-            for (uint64_t j = 0; j < cnf[i].size()-1; j++){
+            for (size_t j = 0; j < cnf[i].size()-1; j++){
                 if (cnf[i][j] == negate_literal(cnf[i][j+1])) {
                     t = true;
                     break;
@@ -95,9 +95,9 @@ inline void clean(Cnf& cnf) {
         i++;
     }
     // check for subsumed clauses
-    for (uint64_t i = 0; i < cnf.size();) {
+    for (size_t i = 0; i < cnf.size();) {
         bool s = false;
-        for (uint64_t j = 0; j < cnf.size(); j++) {
+        for (size_t j = 0; j < cnf.size(); j++) {
             if (i != j && std::includes(cnf[i].begin(), cnf[i].end(), cnf[j].begin(), cnf[j].end())) {
                 s = true;
                 break;

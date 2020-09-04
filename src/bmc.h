@@ -27,7 +27,7 @@ private:
     void create_ands(uint64_t k);
     void create_transition(uint64_t k);
 
-    void add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs);
+    void add_equiv(const std::vector<lit>& lhs, lit rhs);
     void add_clause(const clause& cl);
 
     std::vector<Cnf> _clauses;
