@@ -124,10 +124,11 @@ void bmc::create_a(uint64_t k, const Cnf& interpolant) {
 
 void bmc::create_initial(const Cnf& interpolant) {
     for (const auto& [i, o] : _c.latches) {
-        for (auto cl : interpolant) {
+        for (const auto& cl : interpolant) {
             assert(o%2==0); // maybe smth needs to be changed when negative latch outputs are possible
-            cl.insert(negate_literal(o));
-            add_clause(cl);
+            std::vector<uint64_t> res_cl(cl.begin(), cl.end());
+            res_cl.push_back(negate_literal(o));
+            add_clause(res_cl);
         }
     }
 }
@@ -146,23 +147,22 @@ void bmc::create_transition(uint64_t k) {
 }
 
 void bmc::add_equiv(const std::vector<uint64_t>& lhs, uint64_t rhs) {
-    clause cl;
+    std::vector<uint64_t> cl;
     for (const auto& l : lhs) {
-        cl.insert(negate_literal(l));
+        cl.push_back(negate_literal(l));
     }
-    cl.insert(rhs);
+    cl.push_back(rhs);
     add_clause(cl);
     cl.clear();
-    cl.insert(negate_literal(rhs));
+    cl.push_back(negate_literal(rhs));
     for (const auto& l : lhs) {
-        assert(cl.count(l)==0);
-        cl.insert(l);
+        cl.push_back(l);
         add_clause(cl);
-        cl.erase(l);
+        cl.pop_back();
     }
 }
 
-void bmc::add_clause(const clause& cl) {
+void bmc::add_clause(const std::vector<uint64_t>& cl) {
     vec<Lit> lits;
     int parsed_lit, var;
     for (const auto& lit : cl) {
@@ -198,9 +198,9 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
         create_transition(i);
     }
     // bad
-    clause cl;
+    std::vector<uint64_t> cl;
     for (const auto& o : _c.outputs) {
-        cl.insert(o+k*_c.shift());
+        cl.push_back(o+k*_c.shift());
     }
     add_clause(cl);
 
