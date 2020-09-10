@@ -67,12 +67,12 @@ inline std::ostream& operator<<(std::ostream& out, const vec<Lit>& lits) {
     return out;
 }
 
-inline void clean(Cnf& cnf) {
-    auto temp = cnf;
-    bool changed = false;
+inline void clean(Cnf& cnf, bool sort = true) {
     for (size_t i = 0; i < cnf.size();) {
         // remove duplicates
-        std::sort(cnf[i].begin(), cnf[i].end());
+        if (sort) {
+            std::sort(cnf[i].begin(), cnf[i].end());
+        }
         cnf[i].erase(
             std::unique(cnf[i].begin(), cnf[i].end()),
             cnf[i].end());
@@ -88,7 +88,6 @@ inline void clean(Cnf& cnf) {
             if (t) {
                 cnf[i] = cnf.back();
                 cnf.pop_back();
-                changed = true;
                 continue;
             }
         }
@@ -106,7 +105,6 @@ inline void clean(Cnf& cnf) {
         if (s) {
             cnf[i] = cnf.back();
             cnf.pop_back();
-            changed = true;
             continue;
         }
         i++;
@@ -120,11 +118,10 @@ inline Cnf to_cnf_or(const Cnf& lhs, const Cnf& rhs) {
     Cnf res;
     for (const auto& cl1 : lhs) {
         for (const auto& cl2 : rhs) {
-            auto cl = cl1;
-            cl.insert(cl.end(), cl2.begin(), cl2.end());
-            res.push_back(std::move(cl));
+            res.emplace_back();
+            std::merge(cl1.begin(), cl1.end(), cl2.begin(), cl2.end(), std::back_inserter(res.back()));
         }
     }
-    clean(res);
+    clean(res, false);
     return res;
 }

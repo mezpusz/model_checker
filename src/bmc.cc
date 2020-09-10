@@ -2,10 +2,6 @@
 
 #include <cstdlib>
 
-#include "aiger_parser.h"
-#include "formula.h"
-
-#include "minisat/Solver.h"
 #include "minisat/Sort.h"
 
 #if LOGGING
@@ -43,27 +39,27 @@ void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
 }
 #endif
 
-bmc::bmc(const circuit& c, bool interpolate)
+bmc::bmc(const circuit& c)
     : _clauses(),
+      _num_clauses(0),
 #if LOGGING
       _orig_clauses(),
 #endif
       _vars_b(),
       _c(c),
       _s(),
-      _phase_b(false),
-      _interpolate(interpolate)
+      _phase_b(false)
 {
 }
 
 Cnf bmc::get_interpolant() {
-    return _clauses.back();
+    if (_clauses.find(_num_clauses-1) == _clauses.end()) {
+        return Cnf();
+    }
+    return _clauses.at(_num_clauses-1);
 }
 
 void bmc::root(const vec<Lit>& c) {
-    if (!_interpolate) {
-        return;
-    }
 #if LOGGING
     std::cout << _orig_clauses.size() << ": ROOT " << c << std::endl;
     _orig_clauses.push();
@@ -80,13 +76,13 @@ void bmc::root(const vec<Lit>& c) {
         }
         f.push_back(std::move(cl));
     }
-    _clauses.push_back(f);
+    if (!f.empty()) {
+        _clauses.insert(std::make_pair(_num_clauses, f));
+    }
+    _num_clauses++;
 }
 
 void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
-    if (!_interpolate) {
-        return;
-    }
 #if LOGGING
     std::cout << _orig_clauses.size() << ": CHAIN " << cs[0];
     for (int i = 0; i < xs.size(); i++) {
@@ -100,22 +96,36 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     }
     std::cout << " =>" << c << std::endl;
 #endif
-    Cnf f = _clauses[cs[0]];
+    if (_phase_b) {
+        _num_clauses++;
+        return;
+    }
+    Cnf f;
+    auto it = _clauses.find(cs[0]);
+    if (it != _clauses.end()) {
+        f = it->second;
+    }
     for (int i = 0; i < xs.size(); i++) {
-        if (!_vars_b.count(xs[i])) { // f | g
-            f = to_cnf_or(f, _clauses[cs[i+1]]);
-        } else { // f & g
-            f.insert(f.end(), _clauses[cs[i+1]].begin(), _clauses[cs[i+1]].end());
+        auto it = _clauses.find(cs[i+1]);
+        if (it != _clauses.end()) {
+            if (!_vars_b.count(xs[i])) { // f | g
+                f = to_cnf_or(f, it->second);
+            } else { // f & g
+                f.insert(f.end(), it->second.begin(), it->second.end());
+            }
+        } else if (!_vars_b.count(xs[i])) {
+            f.clear();
         }
     }
-    _clauses.push_back(f);
+    clean(f);
+    if (!f.empty()) {
+        _clauses.insert(std::make_pair(_num_clauses, f));
+    }
+    _num_clauses++;
 }
 
 void bmc::deleted(ClauseId c) {
-    if (!_interpolate) {
-        return;
-    }
-    _clauses[c].clear();
+    _clauses.erase(c);
 #if LOGGING
     std::cout << "deleted " << c << std::endl;
     _orig_clauses[c].clear();
@@ -132,9 +142,9 @@ void bmc::create_a(uint64_t k, const Cnf& interpolant) {
 }
 
 void bmc::create_initial(const Cnf& interpolant) {
-    for (const auto& [i, o] : _c.latches) {
+    for (const auto& kv : _c.latches) {
         for (auto cl : interpolant) {
-            cl.push_back(negate_literal(o));
+            cl.push_back(negate_literal(kv.second));
             add_clause(std::move(cl));
         }
     }
@@ -202,6 +212,7 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     _orig_clauses.clear();
 #endif
     _clauses.clear();
+    _num_clauses = 0;
     _vars_b.clear();
     _phase_b = true;
     // ands and transition

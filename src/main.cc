@@ -46,12 +46,12 @@ int main(int argc, char** argv) {
 #endif
 
     if (k == -1) {
-        std::cout << (interpolation(std::move(c)) ? "sat" : "unsat") << std::endl;
+        std::cout << (interpolation(std::move(c)) ? "FAIL" : "OK") << std::endl;
     } else {
-        bmc b(c, false);
+        bmc b(c);
         Cnf temp;
         temp.emplace_back();
-        std::cout << (b.run(k, temp) ? "sat" : "unsat") << std::endl;
+        std::cout << (b.run(k, temp) ? "FAIL" : "OK") << std::endl;
     }
 
     return 0;
