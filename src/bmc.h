@@ -9,13 +9,18 @@
 
 #include "minisat/Solver.h"
 
+#undef LOGGING
 #define LOGGING 0
 
 class bmc : public ProofTraverser {
 public:
     bmc(const circuit& c);
 
-    bool run(uint64_t k) { Cnf cnf; cnf.emplace_back(); run(k, cnf); }
+    inline bool run(uint64_t k) {
+        Cnf cnf;
+        cnf.emplace_back();
+        return run(k, cnf);
+    }
     bool run(uint64_t k, const Cnf& interpolant);
     Cnf get_interpolant();
 

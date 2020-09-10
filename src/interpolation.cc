@@ -2,54 +2,35 @@
 
 #include "bmc.h"
 
+#undef LOGGING
 #define LOGGING 0
+
+using namespace std;
 
 bool interpolation(circuit c) {
     bmc b(c);
-    uint64_t k = 1;
+    uint64_t k = 1; // first round is I(s0) /\ T(s0,s1) /\ B(s1)
 
     while (true) {
-#if LOGGING
-        std::cout << "k=" << k << std::endl;
-#endif
-        Cnf temp;
-        temp.emplace_back();
-        if (b.run(k, temp)) {
-#if LOGGING
-            std::cout << "Sat in first round of k=" << k << std::endl;
-#endif
+        if (b.run(k)) {
             return true;
         }
-        unsigned i = 0;
+        uint64_t i = 0;
         auto interpolant = b.get_interpolant();
-        clean(interpolant);
-#if LOGGING
-        std::cout << "interpolant: " << interpolant << std::endl;
-#endif
-
         while (true) {
-            if (b.run(k, interpolant)) {
 #if LOGGING
-                std::cout << i << " iterations inside" << std::endl;
+            cout << "k=" << k << ", i=" << i++ << ", interpolant: " << interpolant << endl;
 #endif
+            if (b.run(k, interpolant)) {
                 k++;
-                break;
+                break; // round is inconclusive, increase k
             }
             auto temp = b.get_interpolant();
-            clean(temp);
-#if LOGGING
-            std::cout << "interpolant: " << temp << std::endl;
-#endif
-
             if (temp == interpolant) {
-#if LOGGING
-                std::cout << "Interpolant is same as in previous round" << std::endl;
-#endif
-                return false;
+                return false; // interpolant has converged, return
             }
-            i++;
-            interpolant = std::move(temp);
+            interpolant = move(temp);
         }
     }
-    return false;
+    return false; // this should never be reached, only here to prevent warning
 }

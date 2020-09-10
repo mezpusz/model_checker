@@ -3,6 +3,9 @@
 #include "bmc.h"
 #include "interpolation.h"
 
+#undef LOGGING
+#define LOGGING 0
+
 using namespace std;
 
 void circuit_debug(const circuit& c) {

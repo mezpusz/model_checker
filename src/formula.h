@@ -69,37 +69,45 @@ inline ostream& operator<<(ostream& out, const vec<Lit>& lits) {
     return out;
 }
 
-inline void clean(Cnf& cnf, bool sort = true) {
+inline void clean(Cnf& cnf, bool doSort = true) {
     for (size_t i = 0; i < cnf.size();) {
-        // remove duplicates
-        if (sort) {
-            std::sort(cnf[i].begin(), cnf[i].end());
+        // if we detect empty clause, the whole
+        // formula reduces to one empty clause
+        if (cnf[i].empty()) {
+            if (cnf.size() > 1) {
+                cnf.clear();
+                cnf.emplace_back();
+            }
+            return;
         }
+        // sort if not already sorted
+        if (doSort) {
+            sort(cnf[i].begin(), cnf[i].end());
+        }
+        // remove duplicates
         cnf[i].erase(
-            std::unique(cnf[i].begin(), cnf[i].end()),
+            unique(cnf[i].begin(), cnf[i].end()),
             cnf[i].end());
-        if (!cnf[i].empty()) {
-            bool t = false;
-            // eliminate tautologies (true literals are handled in add_clause)
-            for (size_t j = 0; j < cnf[i].size()-1; j++){
-                if (cnf[i][j] == negate_literal(cnf[i][j+1])) {
-                    t = true;
-                    break;
-                }
+        // eliminate tautologies (true literals are handled in add_clause)
+        bool t = false;
+        for (size_t j = 0; j < cnf[i].size()-1; j++) {
+            if (cnf[i][j] % 2 == 0 && cnf[i][j] == negate_literal(cnf[i][j+1])) {
+                t = true;
+                break;
             }
-            if (t) {
-                cnf[i] = cnf.back();
-                cnf.pop_back();
-                continue;
-            }
+        }
+        if (t) {
+            cnf[i] = cnf.back();
+            cnf.pop_back();
+            continue;
         }
         i++;
     }
-    // check for subsumed clauses
+    // remove subsumed clauses
     for (size_t i = 0; i < cnf.size();) {
         bool s = false;
         for (size_t j = 0; j < cnf.size(); j++) {
-            if (i != j && std::includes(cnf[i].begin(), cnf[i].end(), cnf[j].begin(), cnf[j].end())) {
+            if (i != j && includes(cnf[i].begin(), cnf[i].end(), cnf[j].begin(), cnf[j].end())) {
                 s = true;
                 break;
             }
@@ -111,8 +119,9 @@ inline void clean(Cnf& cnf, bool sort = true) {
         }
         i++;
     }
-    std::sort(cnf.begin(), cnf.end());
-    cnf.erase(std::unique(cnf.begin(), cnf.end()), cnf.end());
+    // finally sort clauses and remove duplicates
+    sort(cnf.begin(), cnf.end());
+    cnf.erase(unique(cnf.begin(), cnf.end()), cnf.end());
     cnf.shrink_to_fit();
 }
 
@@ -121,7 +130,7 @@ inline Cnf to_cnf_or(const Cnf& lhs, const Cnf& rhs) {
     for (const auto& cl1 : lhs) {
         for (const auto& cl2 : rhs) {
             res.emplace_back();
-            std::merge(cl1.begin(), cl1.end(), cl2.begin(), cl2.end(), std::back_inserter(res.back()));
+            merge(cl1.begin(), cl1.end(), cl2.begin(), cl2.end(), back_inserter(res.back()));
         }
     }
     clean(res, false);
