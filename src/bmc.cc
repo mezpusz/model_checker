@@ -110,15 +110,14 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
         auto it = _clauses.find(cs[i+1]);
         if (it != _clauses.end()) {
             if (!_vars_b.count(xs[i])) { // f | g
-                f = to_cnf_or(f, it->second);
+                to_cnf_or(f, it->second);
             } else { // f & g
-                f.insert(f.end(), it->second.begin(), it->second.end());
+                to_cnf_and(f, it->second);
             }
         } else if (!_vars_b.count(xs[i])) {
             f.clear();
         }
     }
-    clean(f); // all formulas are cleaned here
     if (!f.empty()) {
         _clauses.insert(make_pair(_num_clauses, f));
     }
@@ -203,6 +202,15 @@ void bmc::add_clause(const clause& cl) {
     _s->addClause(lits);
 }
 
+/**
+ * The run is optimized to calculate the new interpolant.
+ * As this object is a ProofTraverser, we can first add
+ * all things that belong to B (from the interpolation A => B)
+ * in the beginning. That is marked by _phase_b. During this,
+ * we only create Ts for roots (see root) and record what
+ * variables are in B. The reason B is first is that during
+ * the phase of A, we already need the variables in B.
+ */
 bool bmc::run(uint64_t k, const Cnf& interpolant) {
     Solver s;
     Proof p(*this);

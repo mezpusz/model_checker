@@ -69,63 +69,58 @@ inline ostream& operator<<(ostream& out, const vec<Lit>& lits) {
     return out;
 }
 
-inline void clean(Cnf& cnf, bool doSort = true) {
-    for (size_t i = 0; i < cnf.size();) {
-        // if we detect empty clause, the whole
-        // formula reduces to one empty clause
-        if (cnf[i].empty()) {
-            if (cnf.size() > 1) {
-                cnf.clear();
-                cnf.emplace_back();
-            }
-            return;
-        }
-        // sort if not already sorted
-        if (doSort) {
-            sort(cnf[i].begin(), cnf[i].end());
-        }
+inline void remove_tautologies(Cnf& cnf) {
+    // we assume here that no empty clause is present
+    // and all literals inside clauses are sorted
+    for (auto& cl : cnf) {
         // remove duplicates
-        cnf[i].erase(
-            unique(cnf[i].begin(), cnf[i].end()),
-            cnf[i].end());
+        cl.erase(unique(cl.begin(), cl.end()), cl.end());
         // eliminate tautologies (true literals are handled in add_clause)
-        bool t = false;
-        for (size_t j = 0; j < cnf[i].size()-1; j++) {
-            if (cnf[i][j] % 2 == 0 && cnf[i][j] == negate_literal(cnf[i][j+1])) {
-                t = true;
+        for (size_t j = 0; j < cl.size()-1; j++) {
+            if (cl[j] % 2 == 0 && cl[j] == negate_literal(cl[j+1])) {
+                cl.clear();
                 break;
             }
         }
-        if (t) {
-            cnf[i] = cnf.back();
-            cnf.pop_back();
-            continue;
-        }
-        i++;
     }
-    // remove subsumed clauses
-    for (size_t i = 0; i < cnf.size();) {
-        bool s = false;
-        for (size_t j = 0; j < cnf.size(); j++) {
-            if (i != j && includes(cnf[i].begin(), cnf[i].end(), cnf[j].begin(), cnf[j].end())) {
-                s = true;
-                break;
-            }
-        }
-        if (s) {
-            cnf[i] = cnf.back();
-            cnf.pop_back();
-            continue;
-        }
-        i++;
+    if (!cnf.empty()) {
+        // remove marked clauses
+        cnf.erase(std::remove_if(cnf.begin(), cnf.end(), [](const clause& cl) { return cl.empty(); }), cnf.end());
+        // finally sort clauses
+        sort(cnf.begin(), cnf.end());
+        cnf.shrink_to_fit();
     }
-    // finally sort clauses and remove duplicates
-    sort(cnf.begin(), cnf.end());
-    cnf.erase(unique(cnf.begin(), cnf.end()), cnf.end());
-    cnf.shrink_to_fit();
 }
 
-inline Cnf to_cnf_or(const Cnf& lhs, const Cnf& rhs) {
+inline void remove_subsumed(Cnf& cnf) {
+    for (size_t i = 0; i < cnf.size(); i++) {
+        if (!cnf[i].empty()) {
+            for (size_t j = 0; j < cnf.size(); j++) {
+                if (i != j && !cnf[j].empty() && includes(cnf[i].begin(), cnf[i].end(), cnf[j].begin(), cnf[j].end())) {
+                    cnf[i].clear();
+                    break;
+                }
+            }
+        }
+    }
+    if (!cnf.empty()) {
+        // remove marked clauses
+        cnf.erase(std::remove_if(cnf.begin(), cnf.end(), [](const clause& cl) { return cl.empty(); }), cnf.end());
+        // no sort is needed since clauses were sorted already
+        cnf.shrink_to_fit();
+    }
+}
+
+inline void to_cnf_or(Cnf& lhs, const Cnf& rhs) {
+    // one is empty clause, return other
+    if (lhs.size() == 1 && lhs[0].empty()) {
+        lhs = rhs;
+    }
+    if (rhs.size() == 1 && rhs[0].empty()) {
+        return;
+    }
+    // otherwise merge sorted together to form full cross-product of two CNFs
+    // (note that empty CNF is also handled here) 
     Cnf res;
     for (const auto& cl1 : lhs) {
         for (const auto& cl2 : rhs) {
@@ -133,6 +128,28 @@ inline Cnf to_cnf_or(const Cnf& lhs, const Cnf& rhs) {
             merge(cl1.begin(), cl1.end(), cl2.begin(), cl2.end(), back_inserter(res.back()));
         }
     }
-    clean(res, false);
-    return res;
+    // since new clauses are added, remove any tautologies and subsumed from these
+    remove_tautologies(res);
+    remove_subsumed(res);
+    lhs = res;
+}
+
+inline void to_cnf_and(Cnf& lhs, const Cnf& rhs) {
+    // if one is empty clause, return it
+    if (lhs.size() == 1 && lhs[0].empty()) {
+        return;
+    }
+    if (rhs.size() == 1 && rhs[0].empty()) {
+        lhs = rhs;
+    }
+    // if rhs is empty, just return
+    if (rhs.empty()) {
+        return;
+    }
+    // otherwise merge clauses sorted together (note that empty CNF is also handled here)
+    Cnf res;
+    merge(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), back_inserter(res));
+    // no new clauses, so we only need to check subsumed
+    remove_subsumed(res);
+    lhs = res;
 }
