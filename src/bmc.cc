@@ -1,8 +1,8 @@
 #include "bmc.h"
 
-#include <cstdlib>
-
 #include "minisat/Sort.h"
+
+using namespace std;
 
 #if LOGGING
 void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
@@ -23,16 +23,16 @@ void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
             main.push(other[i]);
         } else {
             if (p != ~other[i]) {
-                std::cout << "PROOF ERROR! Resolved on variable with SAME polarity in both clauses: x" << (x+1);
+                cout << "PROOF ERROR! Resolved on variable with SAME polarity in both clauses: x" << (x+1);
             }
             ok2 = true;
         }
     }
 
     if (!ok1 || !ok2) {
-        std::cout << "PROOF ERROR! Resolved on missing variable: x" << (x+1) << std::endl
-                  << main << std::endl
-                  << other << std::endl;
+        cout << "PROOF ERROR! Resolved on missing variable: x" << (x+1) << endl
+                  << main << endl
+                  << other << endl;
     }
 
     sortUnique(main);
@@ -53,15 +53,16 @@ bmc::bmc(const circuit& c)
 }
 
 Cnf bmc::get_interpolant() {
-    if (_clauses.find(_num_clauses-1) == _clauses.end()) {
+    auto it = _clauses.find(_num_clauses-1);
+    if (it == _clauses.end()) {
         return Cnf();
     }
-    return _clauses.at(_num_clauses-1);
+    return it->second;
 }
 
 void bmc::root(const vec<Lit>& c) {
 #if LOGGING
-    std::cout << _orig_clauses.size() << ": ROOT " << c << std::endl;
+    cout << _orig_clauses.size() << ": ROOT " << c << endl;
     _orig_clauses.push();
     c.copyTo(_orig_clauses.last());
 #endif
@@ -74,19 +75,19 @@ void bmc::root(const vec<Lit>& c) {
             }
             cl.push_back(index(c[i])-_c.shift()); // we already shift all variables back here
         }
-        f.push_back(std::move(cl));
+        f.push_back(move(cl));
     }
     if (!f.empty()) {
-        _clauses.insert(std::make_pair(_num_clauses, f));
+        _clauses.insert(make_pair(_num_clauses, f));
     }
     _num_clauses++;
 }
 
 void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
 #if LOGGING
-    std::cout << _orig_clauses.size() << ": CHAIN " << cs[0];
+    cout << _orig_clauses.size() << ": CHAIN " << cs[0];
     for (int i = 0; i < xs.size(); i++) {
-        std::cout << " [" << "x" << xs[i] << "] " << cs[i+1];
+        cout << " [" << "x" << xs[i] << "] " << cs[i+1];
     }
     _orig_clauses.push();
     vec<Lit>& c = _orig_clauses.last();
@@ -94,7 +95,7 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
     for (int i = 0; i < xs.size(); i++) {
         resolve(c, _orig_clauses[cs[i+1]], xs[i]);
     }
-    std::cout << " =>" << c << std::endl;
+    cout << " =>" << c << endl;
 #endif
     if (_phase_b) {
         _num_clauses++;
@@ -117,9 +118,9 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
             f.clear();
         }
     }
-    clean(f);
+    clean(f); // all formulas are cleaned here
     if (!f.empty()) {
-        _clauses.insert(std::make_pair(_num_clauses, f));
+        _clauses.insert(make_pair(_num_clauses, f));
     }
     _num_clauses++;
 }
@@ -127,7 +128,7 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
 void bmc::deleted(ClauseId c) {
     _clauses.erase(c);
 #if LOGGING
-    std::cout << "deleted " << c << std::endl;
+    cout << "DELETED " << c << endl;
     _orig_clauses[c].clear();
 #endif
 }
@@ -145,7 +146,7 @@ void bmc::create_initial(const Cnf& interpolant) {
     for (const auto& kv : _c.latches) {
         for (auto cl : interpolant) {
             cl.push_back(negate_literal(kv.second));
-            add_clause(std::move(cl));
+            add_clause(move(cl));
         }
     }
 }
@@ -163,7 +164,7 @@ void bmc::create_transition(uint64_t k) {
     }
 }
 
-void bmc::add_equiv(const std::vector<lit>& lhs, lit rhs) {
+void bmc::add_equiv(const vector<lit>& lhs, lit rhs) {
     clause cl;
     for (const auto& l : lhs) {
         cl.push_back(negate_literal(l));
@@ -236,15 +237,15 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     if (s.okay()) {
         for (int i = 0; i < s.nVars(); i++) {
             if (s.model[i] != l_Undef) {
-                std::cout << ((i==0) ? "" : " ")
+                cout << ((i==0) ? "" : " ")
                           << ((s.model[i]==l_True) ? "" : "~")
                           << "x"
                           << i+1;
             }
         }
-        std::cout << std::endl;
+        cout << endl;
     }
-    std::cout << std::endl;
+    cout << endl;
 #endif
 
     _s = nullptr;

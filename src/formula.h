@@ -6,18 +6,20 @@
 
 #include "minisat/SolverTypes.h"
 
-using lit = uint64_t;
-using clause = std::vector<lit>;
-using Cnf = std::vector<clause>;
+using namespace std;
 
-inline std::string literal_to_string(lit n) {
+using lit = uint64_t;
+using clause = vector<lit>;
+using Cnf = vector<clause>;
+
+inline string lit_to_string(lit n) {
     if (n == 0) {
         return "T";
     }
     if (n == 1) {
         return "F";
     }
-    std::stringstream str;
+    stringstream str;
     str << ((n%2==1) ? "~" : "") << "x" << n/2;
     return str.str();
 }
@@ -26,10 +28,10 @@ inline lit negate_literal(lit lit) {
     return (lit%2 == 0) ? (lit + 1) : (lit - 1);
 }
 
-inline std::ostream& operator<<(std::ostream& out, const clause& cl) {
+inline ostream& operator<<(ostream& out, const clause& cl) {
     out << "(";
     for (auto it = cl.begin(); it != cl.end();) {
-        out << literal_to_string(*it);
+        out << lit_to_string(*it);
         if (++it != cl.end()) {
             out << " | ";
         }
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& out, const clause& cl) {
     return out;
 }
 
-inline std::ostream& operator<<(std::ostream& out, const Cnf& cnf) {
+inline ostream& operator<<(ostream& out, const Cnf& cnf) {
     out << "(";
     for (auto it = cnf.begin(); it != cnf.end();) {
         out << *it;
@@ -50,12 +52,12 @@ inline std::ostream& operator<<(std::ostream& out, const Cnf& cnf) {
     return out;
 }
 
-inline std::ostream& operator<<(std::ostream& out, const Lit& lit) {
+inline ostream& operator<<(ostream& out, const Lit& lit) {
     out << (sign(lit) ? "~" : "") << "x" << var(lit);
     return out;
 }
 
-inline std::ostream& operator<<(std::ostream& out, const vec<Lit>& lits) {
+inline ostream& operator<<(ostream& out, const vec<Lit>& lits) {
     out << "(";
     for (int i = 0; i < lits.size(); i++) {
         out << lits[i];

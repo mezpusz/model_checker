@@ -1,33 +1,36 @@
+
 #include "aiger_parser.h"
 #include "bmc.h"
 #include "interpolation.h"
 
+using namespace std;
+
 void circuit_debug(const circuit& c) {
-    std::cout << "circuit" << std::endl;
-    std::cout << "- inputs" << std::endl;
+    cout << "circuit" << endl;
+    cout << "- inputs" << endl;
     for (const auto& i : c.inputs) {
-        std::cout << literal_to_string(i) << std::endl;
+        cout << lit_to_string(i) << endl;
     }
-    std::cout << "- latches" << std::endl;
+    cout << "- latches" << endl;
     for (const auto& [i, o] : c.latches) {
-        std::cout << literal_to_string(i) << " -> " << literal_to_string(o) << std::endl;
+        cout << lit_to_string(i) << " -> " << lit_to_string(o) << endl;
     }
-    std::cout << "- ands" << std::endl;
+    cout << "- ands" << endl;
     for (const auto& [i1, i2, o] : c.ands) {
-        std::cout << literal_to_string(i1) << ", " << literal_to_string(i2) << " <-> " << literal_to_string(o) << std::endl;
+        cout << lit_to_string(i1) << ", " << lit_to_string(i2) << " <-> " << lit_to_string(o) << endl;
     }
-    std::cout << "- outputs" << std::endl;
+    cout << "- outputs" << endl;
     for (const auto& o : c.outputs) {
-        std::cout << literal_to_string(o) << std::endl;
+        cout << lit_to_string(o) << endl;
     }
-    std::cout << std::endl;
+    cout << endl;
 }
 
 int main(int argc, char** argv) {
-    std::string input_file;
+    string input_file;
     int k = -1;
     if (argc < 2) {
-        std::cerr << "Usage: ./model_checker input_file [k]" << std::endl;
+        cerr << "Usage: ./model_checker input_file [k]" << endl;
         return -1;
     } else if (argc == 2) {
         input_file = argv[1];
@@ -38,6 +41,7 @@ int main(int argc, char** argv) {
 
     circuit c;
     if (!parse_aiger_file(input_file, c)) {
+        cerr << "Could not parse file " << input_file << endl;
         return -1;
     }
 
@@ -46,12 +50,10 @@ int main(int argc, char** argv) {
 #endif
 
     if (k == -1) {
-        std::cout << (interpolation(std::move(c)) ? "FAIL" : "OK") << std::endl;
+        cout << (interpolation(move(c)) ? "FAIL" : "OK") << endl;
     } else {
         bmc b(c);
-        Cnf temp;
-        temp.emplace_back();
-        std::cout << (b.run(k, temp) ? "FAIL" : "OK") << std::endl;
+        cout << (b.run(k) ? "FAIL" : "OK") << endl;
     }
 
     return 0;
