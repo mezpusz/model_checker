@@ -197,7 +197,6 @@ void bmc::add_equiv(const vector<lit>& lhs, lit rhs) {
 
 void bmc::add_clause(const clause& cl) {
     vec<Lit> lits;
-    int parsed_lit, var;
     for (const auto& lit : cl) {
         if (lit == 0) { // don't add tautologies
             return;
@@ -205,15 +204,14 @@ void bmc::add_clause(const clause& cl) {
         if (lit == 1) { // don't add false literals
             continue;
         }
-        parsed_lit = (lit%2==0) ? lit/2 : -((lit-1)/2);
-        var = abs(parsed_lit);
+        int var = lit >> 1;
         if (_phase_b) {
             _vars_b.insert(var);
         }
         while (var >= _s->nVars()) {
             _s->newVar();
         }
-        lits.push((parsed_lit > 0) ? Lit(var) : ~Lit(var));
+        lits.push((lit & 1) ? ~Lit(var) : Lit(var));
     }
     _s->addClause(lits);
 }

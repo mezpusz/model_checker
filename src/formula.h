@@ -20,12 +20,12 @@ inline string lit_to_string(lit n) {
         return "F";
     }
     stringstream str;
-    str << ((n%2==1) ? "~" : "") << "x" << n/2;
+    str << ((n & 1) ? "~" : "") << "x" << n/2;
     return str.str();
 }
 
 inline lit negate_literal(lit lit) {
-    return (lit%2 == 0) ? (lit + 1) : (lit - 1);
+    return lit^1;
 }
 
 inline ostream& operator<<(ostream& out, const clause& cl) {
