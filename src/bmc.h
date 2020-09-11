@@ -37,7 +37,10 @@ private:
     void add_equiv(const std::vector<lit>& lhs, lit rhs);
     void add_clause(const clause& cl);
 
+    Cnf calc_chain(ClauseId id);
+
     std::map<size_t, Cnf> _clauses;
+    std::map<size_t, std::pair<std::vector<ClauseId>,std::vector<Var>>> _chains;
     uint64_t _num_clauses;
 #if LOGGING
     vec<vec<Lit>> _orig_clauses;

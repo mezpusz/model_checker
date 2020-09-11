@@ -4,6 +4,14 @@
 
 using namespace std;
 
+template<class T>
+void copyTo(const vec<T>& v, std::vector<T>& other) {
+    other.resize(v.size());
+    for (int i = 0; i < v.size(); i++) {
+        other[i] = v[i];
+    }
+}
+
 #if LOGGING
 void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
 {
@@ -41,6 +49,7 @@ void resolve(vec<Lit>& main, vec<Lit>& other, Var x)
 
 bmc::bmc(const circuit& c)
     : _clauses(),
+      _chains(),
       _num_clauses(0),
 #if LOGGING
       _orig_clauses(),
@@ -53,11 +62,7 @@ bmc::bmc(const circuit& c)
 }
 
 Cnf bmc::get_interpolant() {
-    auto it = _clauses.find(_num_clauses-1);
-    if (it == _clauses.end()) {
-        return Cnf();
-    }
-    return it->second;
+    return calc_chain(_num_clauses-1);
 }
 
 void bmc::root(const vec<Lit>& c) {
@@ -101,31 +106,42 @@ void bmc::chain(const vec<ClauseId>& cs, const vec<Var>& xs) {
         _num_clauses++;
         return;
     }
-    Cnf f;
-    auto it = _clauses.find(cs[0]);
-    if (it != _clauses.end()) {
-        f = it->second;
+    auto res = _chains.emplace(make_pair(_num_clauses++, make_pair(vector<ClauseId>(), vector<Var>())));
+    copyTo(xs, res.first->second.second);
+    copyTo(cs, res.first->second.first);
+}
+
+Cnf bmc::calc_chain(ClauseId id) {
+    auto rIt = _clauses.find(id);
+    if (rIt != _clauses.end()) {
+        return rIt->second;
     }
-    for (int i = 0; i < xs.size(); i++) {
-        auto it = _clauses.find(cs[i+1]);
-        if (it != _clauses.end()) {
-            if (!_vars_b.count(xs[i])) { // f | g
-                to_cnf_or(f, it->second);
-            } else { // f & g
-                to_cnf_and(f, it->second);
-            }
-        } else if (!_vars_b.count(xs[i])) {
-            f.clear();
+    auto cIt = _chains.find(id);
+    Cnf f;
+    if (cIt == _chains.end()) {
+        return f;
+    }
+    const auto& cs = cIt->second.first;
+    const auto& xs = cIt->second.second;
+    f = calc_chain(cs[0]);
+    for (size_t i = 0; i < xs.size(); i++) {
+        auto g = calc_chain(cs[i+1]);
+        if (!_vars_b.count(xs[i])) { // f | g
+            to_cnf_or(f, g);
+        } else { // f & g
+            to_cnf_and(f, g);
         }
     }
     if (!f.empty()) {
-        _clauses.insert(make_pair(_num_clauses, f));
+        _clauses.insert(make_pair(id, f));
     }
-    _num_clauses++;
+    _chains.erase(id);
+    return f;
 }
 
 void bmc::deleted(ClauseId c) {
     _clauses.erase(c);
+    _chains.erase(c);
 #if LOGGING
     cout << "DELETED " << c << endl;
     _orig_clauses[c].clear();
@@ -221,6 +237,7 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     _orig_clauses.clear();
 #endif
     _clauses.clear();
+    _chains.clear();
     _num_clauses = 0;
     _vars_b.clear();
     _phase_b = true;
