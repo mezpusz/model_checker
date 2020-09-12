@@ -166,16 +166,24 @@ void bmc::create_initial(const Cnf& interpolant) {
     }
 }
 
+// we shift everything except true and false
+inline uint64_t sh(uint64_t v, uint64_t shift) {
+    if (v == 0 || v == 1) {
+        return v;
+    }
+    return v+shift;
+}
+
 void bmc::create_ands(uint64_t k) {
     auto shift = k*_c.shift();
     for (const auto& [i1, i2, o] : _c.ands) {
-        add_equiv({ i1+shift, i2+shift }, o+shift);
+        add_equiv({ sh(i1,shift), sh(i2,shift) }, sh(o,shift));
     }
 }
 
 void bmc::create_transition(uint64_t k) {
     for (const auto& [i,o] : _c.latches) {
-        add_equiv({ i+(k-1)*_c.shift() }, o+k*_c.shift());
+        add_equiv({ sh(i,(k-1)*_c.shift()) }, sh(o,k*_c.shift()));
     }
 }
 
@@ -198,10 +206,10 @@ void bmc::add_equiv(const vector<lit>& lhs, lit rhs) {
 void bmc::add_clause(const clause& cl) {
     vec<Lit> lits;
     for (const auto& lit : cl) {
-        if (lit == 0) { // don't add tautologies
+        if (lit == 1) { // don't add tautologies
             return;
         }
-        if (lit == 1) { // don't add false literals
+        if (lit == 0) { // don't add false literals
             continue;
         }
         int var = lit >> 1;
@@ -247,7 +255,7 @@ bool bmc::run(uint64_t k, const Cnf& interpolant) {
     // bad
     clause cl;
     for (const auto& o : _c.outputs) {
-        cl.push_back(o+k*_c.shift());
+        cl.push_back(sh(o,k*_c.shift()));
     }
     add_clause(cl);
 

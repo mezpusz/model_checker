@@ -14,10 +14,10 @@ using Cnf = vector<clause>;
 
 inline string lit_to_string(lit n) {
     if (n == 0) {
-        return "T";
+        return "F";
     }
     if (n == 1) {
-        return "F";
+        return "T";
     }
     stringstream str;
     str << ((n & 1) ? "~" : "") << "x" << n/2;
@@ -45,7 +45,7 @@ inline ostream& operator<<(ostream& out, const Cnf& cnf) {
     for (auto it = cnf.begin(); it != cnf.end();) {
         out << *it;
         if (++it != cnf.end()) {
-            out << " & ";
+            out << " | ";
         }
     }
     out << ")";
@@ -62,7 +62,7 @@ inline ostream& operator<<(ostream& out, const vec<Lit>& lits) {
     for (int i = 0; i < lits.size(); i++) {
         out << lits[i];
         if (i+1 < lits.size()) {
-            out << " & ";
+            out << " | ";
         }
     }
     out << ")";
